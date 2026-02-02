@@ -2,7 +2,57 @@
 
 Minimal agent mail built on Honcho primitives (messages + metadata).
 
+Status: WIP. The CLI surface exists; most Honcho-backed commands are still being wired up.
+
 - Plan: `docs/liquid-mail-complete-plan.md`
+
+## Install
+
+One-touch install (recommended):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ratacat/liquid-mail/main/install.sh | bash
+```
+
+Local install (dev):
+
+```bash
+bun install
+bun run build
+install -m 0755 dist/liquid-mail ~/.local/bin/liquid-mail
+```
+
+Verify:
+
+```bash
+liquid-mail --version
+liquid-mail config --json
+liquid-mail schema --json
+```
+
+## Configure
+
+Use env vars:
+
+```bash
+export LIQUID_MAIL_HONCHO_API_KEY="hc_..."
+export LIQUID_MAIL_HONCHO_WORKSPACE_ID="ws_..."
+```
+
+Or `~/.liquid-mail.toml`:
+
+```toml
+[honcho]
+api_key = "hc_..."
+workspace_id = "ws_..."
+base_url = "https://api.honcho.dev"
+```
+
+## Agent Snippet
+
+Copy/paste for a project's `AGENTS.md`:
+
+- `docs/AGENTS-snippet.md`
 
 ## Development
 

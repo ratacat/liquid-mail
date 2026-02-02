@@ -4,6 +4,7 @@ import { LmError } from './cli/errors';
 import { outputMode, printJson } from './cli/output';
 import { loadConfig } from './config/config';
 import { chooseTopicFromMatches, type WorkspaceSearchMatch } from './topics/autoTopic';
+import { LIQUID_MAIL_VERSION } from './version';
 
 function printHelp(): void {
   const text = [
@@ -22,6 +23,7 @@ function printHelp(): void {
     'Global flags:',
     '  --json, -j   Force JSON output',
     '  --text       Force text output',
+    '  --version, -v Show version',
     '  --help, -h   Show help',
     '',
     'Examples:',
@@ -111,6 +113,12 @@ function getSchemas(): SchemaBundle {
 async function run(): Promise<void> {
   const { command, flags, positionals } = parseArgv(getArgv());
   const mode = outputMode(flags);
+
+  if (flags.version === true || flags.v === true) {
+    if (mode === 'json') printJson({ ok: true, data: { version: LIQUID_MAIL_VERSION } });
+    else process.stdout.write(`${LIQUID_MAIL_VERSION}\n`);
+    return;
+  }
 
   if (flags.help === true || flags.h === true || !command) {
     printHelp();
