@@ -67,6 +67,21 @@ Copy/paste for a project's `AGENTS.md`:
 
 - `docs/AGENTS-snippet.md`
 
+## Optional Notify Hook
+
+To show `notify` output on shell start (opt-in):
+
+```bash
+liquid-mail hooks install
+```
+
+Then add the printed snippet to your shell rc and set:
+
+```bash
+export LIQUID_MAIL_AGENT_ID="your-peer-id"
+export LIQUID_MAIL_NOTIFY_ON_START=1
+```
+
 ## Development
 
 ```bash

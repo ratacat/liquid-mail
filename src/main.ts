@@ -3,8 +3,19 @@ import { getArgv, getFlagString, parseArgv } from './cli/argv';
 import { LmError } from './cli/errors';
 import { outputMode, printJson } from './cli/output';
 import { loadConfig } from './config/config';
+import { requireHonchoAuth } from './config/config';
+import { HonchoClient } from './honcho/client';
+import { createMessage, getSessionSummaries, listSessions, searchWorkspace } from './honcho/api';
+import { buildSearchFilters, filtersForSession, metadataEq } from './honcho/filters';
+import { checkDecisionConflicts } from './conflicts/check';
+import { detectDecision } from './decisions/detectDecision';
+import { extractDecisions } from './decisions/extract';
+import { indexDecisions } from './decisions/index';
 import { integrateProject, type IntegrateTarget } from './integrate/integrate';
+import { hookSnippet } from './hooks/snippets';
+import { notifyForAgent } from './notify/notify';
 import { chooseTopicFromMatches, type WorkspaceSearchMatch } from './topics/autoTopic';
+import { resolveTopicForMessage } from './topics/resolveTopic';
 import { LIQUID_MAIL_VERSION } from './version';
 
 function printHelp(): void {
@@ -16,7 +27,9 @@ function printHelp(): void {
     '  summarize   Show Honcho session summaries (TBD)',
     '  query       Search messages (TBD)',
     '  decisions   List/search decision messages (TBD)',
+    '  topics      List Honcho sessions (TBD)',
     '  notify      Context-based notifications (TBD)',
+    '  hooks       Print optional shell hook snippets',
     '  integrate   Install project-level instructions (claude/codex/opencode)',
     '  schema      Print JSON schemas used by Liquid Mail',
     '  topic-demo  Demo topic dominance algorithm (offline)',
@@ -161,8 +174,147 @@ async function run(): Promise<void> {
     return;
   }
 
+  if (command === 'summarize') {
+    const topicId = getFlagString(flags, 'topic');
+    if (!topicId) {
+      throw new LmError({
+        code: 'TOPIC_REQUIRED',
+        message: 'Missing --topic for summarize.',
+        exitCode: 2,
+        retryable: false,
+        suggestions: ['Re-run with --topic <SESSION_ID>'],
+      });
+    }
+
+    const { config } = await loadConfig();
+    const auth = requireHonchoAuth(config);
+    const client = new HonchoClient(auth);
+    const summaries = await getSessionSummaries(client, topicId);
+
+    if (mode === 'json') {
+      printJson({ ok: true, data: summaries });
+    } else {
+      process.stdout.write(JSON.stringify(summaries, null, 2) + '\n');
+    }
+    return;
+  }
+
+  if (command === 'query') {
+    const query = await readMessage(positionals);
+    if (!query) {
+      throw new LmError({
+        code: 'INVALID_INPUT',
+        message: 'Missing query text (provide args or pipe stdin).',
+        exitCode: 2,
+        retryable: false,
+        suggestions: ['Pass a query: liquid-mail query "find this"', 'Or pipe stdin'],
+      });
+    }
+
+    const limit = Number(getFlagString(flags, 'limit') ?? '10');
+    const topicId = getFlagString(flags, 'topic');
+    const { config } = await loadConfig();
+    const auth = requireHonchoAuth(config);
+    const client = new HonchoClient(auth);
+
+    const filters = topicId ? filtersForSession(topicId) : undefined;
+    const searchRequest = { query, limit } as { query: string; limit: number; filters?: ReturnType<typeof filtersForSession> };
+    if (filters) searchRequest.filters = filters;
+    const results = await searchWorkspace(client, searchRequest);
+
+    if (mode === 'json') printJson({ ok: true, data: results });
+    else process.stdout.write(JSON.stringify(results, null, 2) + '\n');
+    return;
+  }
+
+  if (command === 'topics') {
+    const limit = Number(getFlagString(flags, 'limit') ?? '50');
+    const { config } = await loadConfig();
+    const auth = requireHonchoAuth(config);
+    const client = new HonchoClient(auth);
+    const sessions = await listSessions(client, { limit });
+
+    if (mode === 'json') printJson({ ok: true, data: sessions });
+    else process.stdout.write(JSON.stringify(sessions, null, 2) + '\n');
+    return;
+  }
+
+  if (command === 'decisions') {
+    const limit = Number(getFlagString(flags, 'limit') ?? '10');
+    const topicId = getFlagString(flags, 'topic');
+    const { config } = await loadConfig();
+    const auth = requireHonchoAuth(config);
+    const client = new HonchoClient(auth);
+
+    const filterParams: { sessionIds?: string[]; metadata?: Record<string, ReturnType<typeof metadataEq>> } = {
+      metadata: { 'lm.kind': metadataEq('decision') },
+    };
+    if (topicId) filterParams.sessionIds = [topicId];
+    const filters = buildSearchFilters(filterParams);
+
+    const results = await searchWorkspace(client, {
+      query: 'decision',
+      limit,
+      filters,
+    });
+
+    if (mode === 'json') printJson({ ok: true, data: results });
+    else process.stdout.write(JSON.stringify(results, null, 2) + '\n');
+    return;
+  }
+
+  if (command === 'notify') {
+    const agentId = getFlagString(flags, 'agent-id') ?? getFlagString(flags, 'agentId');
+    const since = getFlagString(flags, 'since');
+    if (!agentId) {
+      throw new LmError({
+        code: 'INVALID_INPUT',
+        message: 'Missing --agent-id for notify.',
+        exitCode: 2,
+        retryable: false,
+        suggestions: ['Re-run with --agent-id <PEER_ID>'],
+      });
+    }
+
+    const { config } = await loadConfig();
+    const auth = requireHonchoAuth(config);
+    const client = new HonchoClient(auth);
+    const notifyParams: { client: HonchoClient; agentId: string; since?: string } = { client, agentId };
+    if (since) notifyParams.since = since;
+    const items = await notifyForAgent(notifyParams);
+
+    if (mode === 'json') printJson({ ok: true, data: { items } });
+    else process.stdout.write(JSON.stringify({ items }, null, 2) + '\n');
+    return;
+  }
+
+  if (command === 'hooks') {
+    const sub = positionals[0] ?? '';
+    if (sub !== 'install') {
+      throw new LmError({
+        code: 'INVALID_INPUT',
+        message: 'Expected: liquid-mail hooks install',
+        exitCode: 2,
+        retryable: false,
+        suggestions: ['Run: liquid-mail hooks install'],
+      });
+    }
+
+    const shellPath = process.env.SHELL ?? '';
+    const shellName = shellPath.split('/').pop() ?? '';
+    const shell = shellName === 'zsh' ? 'zsh' : 'bash';
+    const snippet = hookSnippet(shell);
+
+    if (mode === 'json') printJson({ ok: true, data: { shell, snippet } });
+    else process.stdout.write(`${snippet}\n`);
+    return;
+  }
+
   if (command === 'post') {
     const topicId = getFlagString(flags, 'topic');
+    const agentId = getFlagString(flags, 'agent-id') ?? getFlagString(flags, 'agentId');
+    const decisionFlag = flags['decision'] === true || getFlagString(flags, 'decision') === 'true';
+    const bypassConflicts = flags['yes'] === true || flags['y'] === true;
     const message = await readMessage(positionals);
 
     if (!message) {
@@ -175,19 +327,128 @@ async function run(): Promise<void> {
       });
     }
 
-    if (!topicId) {
+    const { config } = await loadConfig();
+    const auth = requireHonchoAuth(config);
+    const client = new HonchoClient(auth);
+
+    let resolvedTopicId = topicId;
+    let topicDecision = undefined as Awaited<ReturnType<typeof resolveTopicForMessage>> | undefined;
+
+    if (!resolvedTopicId) {
+      topicDecision = await resolveTopicForMessage({
+        client,
+        message,
+        config: config.topics,
+        titleHint: message.slice(0, 80),
+        systemPeerId: config.decisions.systemPeerId,
+      });
+
+      if (topicDecision.action === 'assigned') {
+        resolvedTopicId = topicDecision.chosenTopicId;
+      } else if (topicDecision.action === 'created' || topicDecision.action === 'merged') {
+        resolvedTopicId = topicDecision.createdTopicId;
+      } else {
+        const errorCode = topicDecision.action === 'blocked' ? 'TOPIC_LIMIT_REACHED' : 'TOPIC_REQUIRED';
+        throw new LmError({
+          code: errorCode,
+          message:
+            topicDecision.action === 'blocked'
+              ? 'Topic cap reached; cannot auto-create new topic.'
+              : 'No --topic provided and auto-topic was inconclusive.',
+          exitCode: 2,
+          retryable: false,
+          suggestions: ['Re-run with --topic <SESSION_ID>', 'Adjust topics.auto_create or topics.max_active'],
+          details: { topicDecision },
+        });
+      }
+    }
+
+    if (!resolvedTopicId) {
       throw new LmError({
         code: 'TOPIC_REQUIRED',
-        message: 'No --topic provided. (Honcho integration + auto-topic is not wired yet.)',
+        message: 'Unable to resolve topic.',
         exitCode: 2,
         retryable: false,
         suggestions: ['Re-run with --topic <SESSION_ID>'],
-        details: { note: 'Next: implement Honcho workspace search + dominance assignment' },
+        details: { topicDecision },
       });
     }
 
-    if (mode === 'json') printJson({ ok: true, data: { topic_id: topicId, message_preview: message.slice(0, 120) } });
-    else process.stdout.write(`Posted to ${topicId}: ${message}\n`);
+    const decisionDetection = detectDecision(message, {
+      decisionFlag,
+      allowHeuristic: config.conflicts.decisionsOnly === false,
+    });
+
+    const conflicts: Array<Awaited<ReturnType<typeof checkDecisionConflicts>>> = [];
+    if (config.conflicts.enabled && decisionDetection.isDecision) {
+      const proposed = decisionDetection.decisions.length > 0 ? decisionDetection.decisions : [message];
+      for (const decisionText of proposed) {
+        const conflict = await checkDecisionConflicts({
+          client,
+          peerId: config.decisions.systemPeerId,
+          sessionId: resolvedTopicId,
+          proposedDecision: decisionText,
+          shortlistLimit: 5,
+          threshold: config.conflicts.confidenceThreshold,
+        });
+        conflicts.push(conflict);
+        if (conflict.blocking && !bypassConflicts) {
+          const strongest = conflict.conflicts.reduce(
+            (best, item) => (item.confidence > best.confidence ? item : best),
+            conflict.conflicts[0] ?? { prior_decision_id: '', confidence: 0 },
+          );
+          throw new LmError({
+            code: 'DECISION_CONFLICT',
+            message: 'Decision conflicts with prior decisions.',
+            exitCode: 3,
+            retryable: false,
+            suggestions: ['Review prior decisions', 'Re-run with --yes to override'],
+            details: { conflict: strongest, conflicts: conflict.conflicts },
+          });
+        }
+      }
+    }
+
+    const peerId = agentId ?? 'liquid-mail';
+    const created = await createMessage(client, resolvedTopicId, {
+      peer_id: peerId,
+      content: message,
+    });
+
+    let decisionIndexResult: unknown = undefined;
+    if (config.decisions.enabled && decisionDetection.isDecision) {
+      try {
+        const extracted = await extractDecisions({
+          client,
+          peerId: config.decisions.systemPeerId,
+          message,
+        });
+
+        decisionIndexResult = await indexDecisions({
+          client,
+          sessionId: resolvedTopicId,
+          systemPeerId: config.decisions.systemPeerId,
+          sourceMessageId: created.message.id,
+          decisions: extracted.decisions,
+        });
+      } catch (err) {
+        decisionIndexResult = { error: err instanceof Error ? err.message : String(err) };
+      }
+    }
+
+    if (mode === 'json') {
+      printJson({
+        ok: true,
+        data: {
+          message: created.message,
+          topic_decision: topicDecision,
+          conflicts,
+          decision_index: decisionIndexResult,
+        },
+      });
+    } else {
+      process.stdout.write(`Posted to ${resolvedTopicId} as ${peerId}\n`);
+    }
     return;
   }
 

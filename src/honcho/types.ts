@@ -1,6 +1,6 @@
 export type HonchoId = string;
 
-export type HonchoMetadataValue = string | number | boolean | null;
+export type HonchoMetadataValue = string | number | boolean | null | Array<string | number | boolean | null>;
 
 export type HonchoMetadataFilter =
   | HonchoMetadataValue
