@@ -30,15 +30,28 @@ export async function integrateProject(opts: { cwd: string; target: IntegrateTar
 
 async function integrateClaudeProject(cwd: string): Promise<IntegrateResult> {
   const claudePath = join(cwd, 'CLAUDE.md');
+  const agentsPath = join(cwd, 'AGENTS.md');
 
   // Claude Code projects often prefer CLAUDE.md for persistent instructions.
-  // If it exists and has any content, use it. Otherwise, fall back to AGENTS.md.
   const claudeExisting = await readTextIfExists(claudePath);
-  if (claudeExisting.trim().length > 0) {
+  const agentsExisting = await readTextIfExists(agentsPath);
+
+  // If we already installed the managed block somewhere, keep updating it there (stable, no duplicates).
+  if (hasLiquidMailBlock(claudeExisting)) {
     return await integrateManagedMarkdownFile('claude', claudePath);
   }
 
-  return await integrateManagedMarkdownFile('claude', join(cwd, 'AGENTS.md'));
+  if (hasLiquidMailBlock(agentsExisting)) {
+    return await integrateManagedMarkdownFile('claude', agentsPath);
+  }
+
+  // If CLAUDE.md is present but is just a thin pointer to AGENTS.md (common pattern),
+  // treat it as "no real CLAUDE instructions" and install into AGENTS.md.
+  if (claudeExisting.trim().length > 0 && !looksLikeAgentsPointerClaudeMd(claudeExisting)) {
+    return await integrateManagedMarkdownFile('claude', claudePath);
+  }
+
+  return await integrateManagedMarkdownFile('claude', agentsPath);
 }
 
 async function integrateManagedMarkdownFile(target: IntegrateTarget, filePath: string): Promise<IntegrateResult> {
@@ -171,4 +184,35 @@ function normalizeInstructions(value: unknown): string[] {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function hasLiquidMailBlock(text: string): boolean {
+  return text.includes(LIQUID_MAIL_AGENTS_BLOCK_START) && text.includes(LIQUID_MAIL_AGENTS_BLOCK_END);
+}
+
+function looksLikeAgentsPointerClaudeMd(text: string): boolean {
+  // Heuristic: treat CLAUDE.md as a "wrapper" when it mostly just points at AGENTS.md.
+  // Example patterns:
+  // - "@AGENTS.md"
+  // - "See @AGENTS.md"
+  // - "Follow @AGENTS.md for instructions"
+  const trimmed = text.trim();
+  if (!/agents\.md/i.test(trimmed)) return false;
+
+  // Remove headings/comments and the obvious agents reference, then see if anything meaningful remains.
+  const lines = trimmed
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .filter((line) => !line.startsWith('#'))
+    .filter((line) => !line.startsWith('<!--'));
+
+  const withoutAgentsRef = lines.join(' ')
+    .replace(/agents\.md/gi, '')
+    .replace(/[@`*_[\]()]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // If there's basically no additional instruction content, treat it as a pointer-only CLAUDE.md.
+  return withoutAgentsRef.length < 24;
 }

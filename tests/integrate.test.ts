@@ -31,6 +31,18 @@ describe('integrate --to claude', () => {
     expect(await fileExists(join(dir, 'AGENTS.md'))).toBe(false);
   });
 
+  it('falls back to AGENTS.md when CLAUDE.md is just a pointer to AGENTS.md', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'liquid-mail-integrate-'));
+    const claudePath = join(dir, 'CLAUDE.md');
+    await writeFile(claudePath, '@AGENTS.md\n', 'utf8');
+
+    const result = await integrateProject({ cwd: dir, target: 'claude' });
+    expect(result.files[0]?.path).toBe(join(dir, 'AGENTS.md'));
+
+    const claudeText = await readFile(claudePath, 'utf8');
+    expect(claudeText).not.toContain(LIQUID_MAIL_AGENTS_BLOCK_START);
+  });
+
   it('falls back to AGENTS.md when CLAUDE.md is missing', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'liquid-mail-integrate-'));
     const agentsPath = join(dir, 'AGENTS.md');
@@ -53,4 +65,3 @@ describe('integrate --to claude', () => {
     expect(await fileExists(join(dir, 'AGENTS.md'))).toBe(true);
   });
 });
-
