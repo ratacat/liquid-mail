@@ -23,20 +23,31 @@ export type IntegrateResult = {
 };
 
 export async function integrateProject(opts: { cwd: string; target: IntegrateTarget }): Promise<IntegrateResult> {
-  if (opts.target === 'claude' || opts.target === 'codex') {
-    return await integrateAgentsMd(opts.cwd, opts.target);
-  }
+  if (opts.target === 'claude') return await integrateClaudeProject(opts.cwd);
+  if (opts.target === 'codex') return await integrateManagedMarkdownFile('codex', join(opts.cwd, 'AGENTS.md'));
   return await integrateOpenCode(opts.cwd);
 }
 
-async function integrateAgentsMd(cwd: string, target: IntegrateTarget): Promise<IntegrateResult> {
-  const agentsPath = join(cwd, 'AGENTS.md');
+async function integrateClaudeProject(cwd: string): Promise<IntegrateResult> {
+  const claudePath = join(cwd, 'CLAUDE.md');
+
+  // Claude Code projects often prefer CLAUDE.md for persistent instructions.
+  // If it exists and has any content, use it. Otherwise, fall back to AGENTS.md.
+  const claudeExisting = await readTextIfExists(claudePath);
+  if (claudeExisting.trim().length > 0) {
+    return await integrateManagedMarkdownFile('claude', claudePath);
+  }
+
+  return await integrateManagedMarkdownFile('claude', join(cwd, 'AGENTS.md'));
+}
+
+async function integrateManagedMarkdownFile(target: IntegrateTarget, filePath: string): Promise<IntegrateResult> {
   const block = buildManagedBlock(LIQUID_MAIL_AGENTS_BLOCK_START, LIQUID_MAIL_AGENT_SNIPPET, LIQUID_MAIL_AGENTS_BLOCK_END);
-  const existing = await readTextIfExists(agentsPath);
+  const existing = await readTextIfExists(filePath);
   const next = upsertManagedBlock(existing, block, LIQUID_MAIL_AGENTS_BLOCK_START, LIQUID_MAIL_AGENTS_BLOCK_END);
 
-  const action = await writeTextIfChanged(agentsPath, existing, next);
-  return { target, files: [{ path: agentsPath, action }] };
+  const action = await writeTextIfChanged(filePath, existing, next);
+  return { target, files: [{ path: filePath, action }] };
 }
 
 async function integrateOpenCode(cwd: string): Promise<IntegrateResult> {
@@ -161,4 +172,3 @@ function normalizeInstructions(value: unknown): string[] {
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
-
