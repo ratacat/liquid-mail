@@ -3,6 +3,7 @@ import { getArgv, getFlagString, parseArgv } from './cli/argv';
 import { LmError } from './cli/errors';
 import { outputMode, printJson } from './cli/output';
 import { loadConfig } from './config/config';
+import { integrateProject, type IntegrateTarget } from './integrate/integrate';
 import { chooseTopicFromMatches, type WorkspaceSearchMatch } from './topics/autoTopic';
 import { LIQUID_MAIL_VERSION } from './version';
 
@@ -16,6 +17,7 @@ function printHelp(): void {
     '  query       Search messages (TBD)',
     '  decisions   List/search decision messages (TBD)',
     '  notify      Context-based notifications (TBD)',
+    '  integrate   Install project-level instructions (claude/codex/opencode)',
     '  schema      Print JSON schemas used by Liquid Mail',
     '  topic-demo  Demo topic dominance algorithm (offline)',
     '  config      Show resolved config (redacts secrets)',
@@ -29,6 +31,7 @@ function printHelp(): void {
     'Examples:',
     '  liquid-mail schema --json',
     '  liquid-mail topic-demo A A A A B',
+    '  liquid-mail integrate --to claude',
   ];
   process.stdout.write(text.join('\n') + '\n');
 }
@@ -185,6 +188,27 @@ async function run(): Promise<void> {
 
     if (mode === 'json') printJson({ ok: true, data: { topic_id: topicId, message_preview: message.slice(0, 120) } });
     else process.stdout.write(`Posted to ${topicId}: ${message}\n`);
+    return;
+  }
+
+  if (command === 'integrate') {
+    const to = (getFlagString(flags, 'to') ?? '').trim();
+    if (to !== 'claude' && to !== 'codex' && to !== 'opencode') {
+      throw new LmError({
+        code: 'INVALID_INPUT',
+        message: 'Missing or invalid --to (expected: claude|codex|opencode).',
+        exitCode: 2,
+        retryable: false,
+        suggestions: ['Run: liquid-mail integrate --to claude', 'Run: liquid-mail integrate --to opencode'],
+        details: { to },
+      });
+    }
+
+    const result = await integrateProject({ cwd: process.cwd(), target: to as IntegrateTarget });
+    if (mode === 'json') printJson({ ok: true, data: result });
+    else {
+      for (const file of result.files) process.stdout.write(`${file.action}: ${file.path}\n`);
+    }
     return;
   }
 

@@ -19,6 +19,7 @@ Options:
   --ref <git-ref>          Git ref for source builds (default: main)
   --bin-dir <dir>          Install directory (default: ~/.local/bin)
   --config-path <path>     Config path (default: ~/.liquid-mail.toml)
+  --integrate <target>     Project-level integration (claude|codex|opencode)
   --no-config              Do not create a config template
   --no-release             Skip release download attempt (build from source)
   -h, --help               Show help
@@ -113,6 +114,7 @@ main() {
   local ref="$REF_DEFAULT"
   local bin_dir="$BIN_DIR_DEFAULT"
   local config_path="$CONFIG_PATH_DEFAULT"
+  local integrate_to=""
   local no_config="0"
   local no_release="0"
 
@@ -132,6 +134,10 @@ main() {
         ;;
       --config-path)
         config_path="$2"
+        shift 2
+        ;;
+      --integrate)
+        integrate_to="$2"
         shift 2
         ;;
       --no-config)
@@ -213,6 +219,14 @@ EOF
   fi
 
   "${bin_dir}/liquid-mail" --version >/dev/null 2>&1 || "${bin_dir}/liquid-mail" --help >/dev/null 2>&1
+
+  if [[ -n "$integrate_to" ]]; then
+    case "$integrate_to" in
+      claude|codex|opencode) ;;
+      *) die "Unknown --integrate target: ${integrate_to} (expected: claude|codex|opencode)" ;;
+    esac
+    "${bin_dir}/liquid-mail" integrate --to "$integrate_to"
+  fi
 
   say "Done."
   say "Binary: ${bin_dir}/liquid-mail"

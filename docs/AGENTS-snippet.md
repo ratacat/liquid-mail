@@ -1,6 +1,5 @@
-# Liquid Mail (Agent Snippet)
+## Liquid Mail
 
-This snippet is designed to be copy/pasted into a project's `AGENTS.md`.
 If a command errors, run `liquid-mail --help` to see what's available in your installed version.
 
 ## 50-Token Quick Start
@@ -13,7 +12,7 @@ If a command errors, run `liquid-mail --help` to see what's available in your in
 
 - Post **small, structured** messages. Prefer 5-15 lines over walls of text.
 - Use explicit prefixes so tools can extract artifacts reliably.
-Prefixes:
+- Prefixes:
 - `Decision:` one clear decision per message
 - `Finding:` evidence or surprising observation
 - `Question:` what you need answered

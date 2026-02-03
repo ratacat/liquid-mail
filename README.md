@@ -14,6 +14,19 @@ One-touch install (recommended):
 curl -fsSL https://raw.githubusercontent.com/ratacat/liquid-mail/main/install.sh | bash
 ```
 
+Project-level host integration (run from your project root):
+
+```bash
+# Claude Code
+curl -fsSL https://raw.githubusercontent.com/ratacat/liquid-mail/main/install.sh | bash -s -- --integrate claude
+
+# Codex
+curl -fsSL https://raw.githubusercontent.com/ratacat/liquid-mail/main/install.sh | bash -s -- --integrate codex
+
+# OpenCode
+curl -fsSL https://raw.githubusercontent.com/ratacat/liquid-mail/main/install.sh | bash -s -- --integrate opencode
+```
+
 Local install (dev):
 
 ```bash
