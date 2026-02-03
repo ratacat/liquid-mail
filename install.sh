@@ -18,7 +18,7 @@ Options:
   --repo <owner/repo>      GitHub repo (default: ratacat/liquid-mail)
   --ref <git-ref>          Git ref for source builds (default: main)
   --bin-dir <dir>          Install directory (default: ~/.local/bin)
-  --config-path <path>     Config path (default: ~/.liquid-mail.toml)
+  --config-path <path>     Config path (default: ~/.liquid-mail.toml; for project use: ./\.liquid-mail.toml)
   --integrate <target>     Project-level integration (claude|codex|opencode)
   --no-config              Do not create a config template
   --no-release             Skip release download attempt (build from source)
@@ -117,6 +117,10 @@ main() {
   local integrate_to=""
   local no_config="0"
   local no_release="0"
+  local tmp=""
+  local release_tmp=""
+
+  trap '[[ -n "${tmp:-}" ]] && rm -rf "${tmp}" >/dev/null 2>&1 || true; [[ -n "${release_tmp:-}" ]] && rm -rf "${release_tmp}" >/dev/null 2>&1 || true' EXIT
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -166,16 +170,16 @@ main() {
     if downloader >/dev/null 2>&1 && command -v tar >/dev/null 2>&1; then
       read -r os arch < <(detect_platform)
       local url="https://github.com/${repo}/releases/latest/download/liquid-mail-${os}-${arch}.tar.gz"
-      local tmp
-      tmp="$(mktemp -d)"
-      if download_to "$url" "${tmp}/liquid-mail.tgz" >/dev/null 2>&1; then
-        if tar -xzf "${tmp}/liquid-mail.tgz" -C "$tmp" >/dev/null 2>&1 && [[ -f "${tmp}/liquid-mail" ]]; then
-          install -m 0755 "${tmp}/liquid-mail" "${bin_dir}/liquid-mail"
+      release_tmp="$(mktemp -d)"
+      if download_to "$url" "${release_tmp}/liquid-mail.tgz" >/dev/null 2>&1; then
+        if tar -xzf "${release_tmp}/liquid-mail.tgz" -C "$release_tmp" >/dev/null 2>&1 && [[ -f "${release_tmp}/liquid-mail" ]]; then
+          install -m 0755 "${release_tmp}/liquid-mail" "${bin_dir}/liquid-mail"
           installed="1"
           say "Installed liquid-mail from GitHub release."
         fi
       fi
-      rm -rf "$tmp" || true
+      rm -rf "$release_tmp" || true
+      release_tmp=""
     fi
   fi
 
@@ -183,9 +187,7 @@ main() {
     need_cmd git
     ensure_bun
 
-    local tmp
     tmp="$(mktemp -d)"
-    trap 'rm -rf "$tmp" >/dev/null 2>&1 || true' EXIT
 
     say "Building from source (${repo}@${ref})..."
     git clone --depth 1 --branch "$ref" --quiet "https://github.com/${repo}.git" "${tmp}/repo"

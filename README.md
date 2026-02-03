@@ -61,6 +61,12 @@ workspace_id = "ws_..."
 base_url = "https://api.honcho.dev"
 ```
 
+Per-project config (recommended for teams):
+
+- Create `./.liquid-mail.toml` in your repo with non-secrets (ex: `workspace_id`)
+- Keep `api_key` in env vars (don’t commit it)
+- Point Liquid Mail at it with `LIQUID_MAIL_CONFIG="$PWD/.liquid-mail.toml"` or `liquid-mail --config ./.liquid-mail.toml ...`
+
 ## Agent Snippet
 
 Copy/paste for a project's `AGENTS.md`:

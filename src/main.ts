@@ -38,6 +38,7 @@ function printHelp(): void {
     'Global flags:',
     '  --json, -j   Force JSON output',
     '  --text       Force text output',
+    '  --config     Use config at path',
     '  --version, -v Show version',
     '  --help, -h   Show help',
     '',
@@ -129,6 +130,8 @@ function getSchemas(): SchemaBundle {
 async function run(): Promise<void> {
   const { command, flags, positionals } = parseArgv(getArgv());
   const mode = outputMode(flags);
+  const configFlag = getFlagString(flags, 'config');
+  const loadConfigResolved = async () => await loadConfig(configFlag ? { configPath: configFlag } : undefined);
 
   if (flags.version === true || flags.v === true) {
     if (mode === 'json') printJson({ ok: true, data: { version: LIQUID_MAIL_VERSION } });
@@ -149,8 +152,7 @@ async function run(): Promise<void> {
   }
 
   if (command === 'config') {
-    const configFlag = getFlagString(flags, 'config');
-    const { config, configPath } = await loadConfig(configFlag ? { configPath: configFlag } : undefined);
+    const { config, configPath } = await loadConfigResolved();
     const redacted = {
       ...config,
       honcho: {
@@ -186,7 +188,7 @@ async function run(): Promise<void> {
       });
     }
 
-    const { config } = await loadConfig();
+    const { config } = await loadConfigResolved();
     const auth = requireHonchoAuth(config);
     const client = new HonchoClient(auth);
     const summaries = await getSessionSummaries(client, topicId);
@@ -213,7 +215,7 @@ async function run(): Promise<void> {
 
     const limit = Number(getFlagString(flags, 'limit') ?? '10');
     const topicId = getFlagString(flags, 'topic');
-    const { config } = await loadConfig();
+    const { config } = await loadConfigResolved();
     const auth = requireHonchoAuth(config);
     const client = new HonchoClient(auth);
 
@@ -229,7 +231,7 @@ async function run(): Promise<void> {
 
   if (command === 'topics') {
     const limit = Number(getFlagString(flags, 'limit') ?? '50');
-    const { config } = await loadConfig();
+    const { config } = await loadConfigResolved();
     const auth = requireHonchoAuth(config);
     const client = new HonchoClient(auth);
     const sessions = await listSessions(client, { limit });
@@ -242,7 +244,7 @@ async function run(): Promise<void> {
   if (command === 'decisions') {
     const limit = Number(getFlagString(flags, 'limit') ?? '10');
     const topicId = getFlagString(flags, 'topic');
-    const { config } = await loadConfig();
+    const { config } = await loadConfigResolved();
     const auth = requireHonchoAuth(config);
     const client = new HonchoClient(auth);
 
@@ -276,7 +278,7 @@ async function run(): Promise<void> {
       });
     }
 
-    const { config } = await loadConfig();
+    const { config } = await loadConfigResolved();
     const auth = requireHonchoAuth(config);
     const client = new HonchoClient(auth);
     const notifyParams: { client: HonchoClient; agentId: string; since?: string } = { client, agentId };
@@ -327,7 +329,7 @@ async function run(): Promise<void> {
       });
     }
 
-    const { config } = await loadConfig();
+    const { config } = await loadConfigResolved();
     const auth = requireHonchoAuth(config);
     const client = new HonchoClient(auth);
 
