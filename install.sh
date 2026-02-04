@@ -18,7 +18,7 @@ Options:
   --repo <owner/repo>      GitHub repo (default: ratacat/liquid-mail)
   --ref <git-ref>          Git ref for source builds (default: main)
   --bin-dir <dir>          Install directory (default: ~/.local/bin)
-  --config-path <path>     Config path (default: ~/.liquid-mail.toml; for project use: ./\.liquid-mail.toml)
+  --config-path <path>     Config path (default: repo-root/.liquid-mail.toml or ~/.liquid-mail.toml)
   --integrate <target>     Project-level integration (claude|codex|opencode)
   --no-config              Do not create a config template
   --no-release             Skip release download attempt (build from source)
@@ -88,6 +88,12 @@ detect_platform() {
   printf '%s %s\n' "$os" "$arch"
 }
 
+project_root() {
+  if command -v git >/dev/null 2>&1; then
+    git rev-parse --show-toplevel 2>/dev/null || true
+  fi
+}
+
 ensure_bun() {
   if command -v bun >/dev/null 2>&1; then
     return 0
@@ -113,7 +119,7 @@ main() {
   local repo="$REPO_DEFAULT"
   local ref="$REF_DEFAULT"
   local bin_dir="$BIN_DIR_DEFAULT"
-  local config_path="$CONFIG_PATH_DEFAULT"
+  local config_path=""
   local integrate_to=""
   local no_config="0"
   local no_release="0"
@@ -161,6 +167,16 @@ main() {
         ;;
     esac
   done
+
+  if [[ -z "${config_path}" ]]; then
+    local root
+    root="$(project_root)"
+    if [[ -n "${root}" ]]; then
+      config_path="${root}/.liquid-mail.toml"
+    else
+      config_path="${CONFIG_PATH_DEFAULT}"
+    fi
+  fi
 
   mkdir -p "$bin_dir"
 

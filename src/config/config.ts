@@ -1,6 +1,7 @@
+import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join, parse } from 'node:path';
 
 import { LmError } from '../cli/errors';
 
@@ -82,7 +83,24 @@ function resolveConfigPath(opts?: LoadConfigOpts): string {
   const fromEnv = process.env.LIQUID_MAIL_CONFIG;
   if (opts?.configPath) return expandHome(opts.configPath);
   if (fromEnv) return expandHome(fromEnv);
+  const found = findNearestConfig(process.cwd());
+  if (found) return found;
   return join(homedir(), '.liquid-mail.toml');
+}
+
+function findNearestConfig(startDir: string): string | undefined {
+  let current = startDir;
+  const root = parse(current).root;
+
+  // Walk upwards until filesystem root.
+  while (true) {
+    const candidate = join(current, '.liquid-mail.toml');
+    if (existsSync(candidate)) return candidate;
+    if (current === root) break;
+    current = dirname(current);
+  }
+
+  return undefined;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -206,7 +224,8 @@ export function requireHonchoAuth(config: LiquidMailConfig): { apiKey: string; w
       retryable: false,
       suggestions: [
         'Set LIQUID_MAIL_HONCHO_API_KEY and LIQUID_MAIL_HONCHO_WORKSPACE_ID',
-        'Or create ~/.liquid-mail.toml with [honcho] api_key=..., workspace_id=...',
+        'Or create ./.liquid-mail.toml (project) or ~/.liquid-mail.toml (user) with [honcho] api_key=..., workspace_id=...',
+        'Or set LIQUID_MAIL_CONFIG to point to a project config file',
       ],
       details: { baseUrl },
     });
