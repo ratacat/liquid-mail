@@ -179,6 +179,23 @@ liquid-mail post --topic auth-system --decision "[br-123] DECISION: Move refresh
 liquid-mail post --topic dashboards "[br-456] START: Adding latency panel"
 \`\`\`
 
+### Context Refresh (Before New Work / After “Compaction”)
+
+If you’re about to start a new chunk of work, or you see messages like “merged into …”, “redirect”, or big new summaries, refresh context before acting:
+
+\`\`\`bash
+liquid-mail notify
+liquid-mail window status --json
+liquid-mail summarize --topic <topic-id>
+liquid-mail decisions --topic <topic-id>
+\`\`\`
+
+If you discover a newer “canonical” topic (for example after a topic merge), switch to it explicitly and let window pinning follow:
+
+\`\`\`bash
+liquid-mail post --topic <new-topic-id> "[br-123] CONTEXT: Switching topics (merge/redirect)"
+\`\`\`
+
 ### Mapping Cheat-Sheet
 
 | Concept | In Beads | In Liquid Mail |
