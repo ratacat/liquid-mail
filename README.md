@@ -27,20 +27,6 @@ curl -fsSL https://raw.githubusercontent.com/ratacat/liquid-mail/main/install.sh
 curl -fsSL https://raw.githubusercontent.com/ratacat/liquid-mail/main/install.sh | bash -s -- --integrate opencode
 ```
 
-Optional: also print the window env snippet during install:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/ratacat/liquid-mail/main/install.sh | bash -s -- --window-env
-```
-
-Local install (dev):
-
-```bash
-bun install
-bun run build
-install -m 0755 dist/liquid-mail ~/.local/bin/liquid-mail
-```
-
 Verify:
 
 ```bash

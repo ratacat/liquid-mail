@@ -20,7 +20,8 @@ Options:
   --bin-dir <dir>          Install directory (default: ~/.local/bin)
   --config-path <path>     Config path (default: repo-root/.liquid-mail.toml or ~/.liquid-mail.toml)
   --integrate <target>     Project-level integration (claude|codex|opencode)
-  --window-env             Print optional per-window env snippet (no shell files modified)
+  --window-env             Print per-window env snippet (default)
+  --no-window-env          Skip printing per-window env snippet
   --no-config              Do not create a config template
   --no-release             Skip release download attempt (build from source)
   -h, --help               Show help
@@ -122,7 +123,7 @@ main() {
   local bin_dir="$BIN_DIR_DEFAULT"
   local config_path=""
   local integrate_to=""
-  local print_hooks="0"
+  local print_window_env="1"
   local no_config="0"
   local no_release="0"
   local tmp=""
@@ -153,11 +154,15 @@ main() {
         shift 2
         ;;
       --hooks)
-        print_hooks="1"
+        print_window_env="1"
         shift
         ;;
       --window-env)
-        print_hooks="1"
+        print_window_env="1"
+        shift
+        ;;
+      --no-window-env)
+        print_window_env="0"
         shift
         ;;
       --no-config)
@@ -256,12 +261,12 @@ EOF
     "${bin_dir}/liquid-mail" integrate --to "$integrate_to"
   fi
 
-  if [[ "$print_hooks" == "1" ]]; then
+  if [[ "$print_window_env" == "1" ]]; then
     say ""
-    say "Optional per-window env snippet (copy/paste into ~/.zshrc or ~/.bashrc):"
+    say "Per-window env snippet (copy/paste into ~/.zshrc or ~/.bashrc):"
     "${bin_dir}/liquid-mail" window env || "${bin_dir}/liquid-mail" hooks install || true
     say ""
-    say "Then set:"
+    say "Optional:"
     say "  export LIQUID_MAIL_NOTIFY_ON_START=1"
   fi
 
