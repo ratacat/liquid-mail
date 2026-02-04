@@ -11,8 +11,8 @@ export function hookSnippet(shell: HookShell): string {
     '  fi',
     '  export LIQUID_MAIL_WINDOW_ID',
     'fi',
-    'if [ "${LIQUID_MAIL_NOTIFY_ON_START:-0}" = "1" ] && [ -n "${LIQUID_MAIL_AGENT_ID:-}" ]; then',
-    '  liquid-mail notify --agent-id "${LIQUID_MAIL_AGENT_ID}" || true',
+    'if [ "${LIQUID_MAIL_NOTIFY_ON_START:-0}" = "1" ] && [ -n "${LIQUID_MAIL_WINDOW_ID:-}" ]; then',
+    '  liquid-mail notify || true',
     'fi',
   ];
   return [header, ...body].join('\n');

@@ -20,7 +20,7 @@ Options:
   --bin-dir <dir>          Install directory (default: ~/.local/bin)
   --config-path <path>     Config path (default: repo-root/.liquid-mail.toml or ~/.liquid-mail.toml)
   --integrate <target>     Project-level integration (claude|codex|opencode)
-  --hooks                  Print optional shell hook snippet (no shell files modified)
+  --window-env             Print optional per-window env snippet (no shell files modified)
   --no-config              Do not create a config template
   --no-release             Skip release download attempt (build from source)
   -h, --help               Show help
@@ -156,6 +156,10 @@ main() {
         print_hooks="1"
         shift
         ;;
+      --window-env)
+        print_hooks="1"
+        shift
+        ;;
       --no-config)
         no_config="1"
         shift
@@ -254,12 +258,11 @@ EOF
 
   if [[ "$print_hooks" == "1" ]]; then
     say ""
-    say "Optional shell hook (copy/paste into ~/.zshrc or ~/.bashrc):"
-    "${bin_dir}/liquid-mail" hooks install || true
+    say "Optional per-window env snippet (copy/paste into ~/.zshrc or ~/.bashrc):"
+    "${bin_dir}/liquid-mail" window env || "${bin_dir}/liquid-mail" hooks install || true
     say ""
     say "Then set:"
     say "  export LIQUID_MAIL_NOTIFY_ON_START=1"
-    say "  export LIQUID_MAIL_AGENT_ID=\"your-peer-id\""
   fi
 
   say "Done."

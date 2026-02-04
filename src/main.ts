@@ -321,13 +321,24 @@ async function run(): Promise<void> {
 
   if (command === 'window') {
     const sub = positionals[0] ?? '';
+    if (sub === 'env') {
+      const shellPath = process.env.SHELL ?? '';
+      const shellName = shellPath.split('/').pop() ?? '';
+      const shell = shellName === 'zsh' ? 'zsh' : 'bash';
+      const snippet = hookSnippet(shell);
+
+      if (mode === 'json') printJson({ ok: true, data: { shell, snippet } });
+      else process.stdout.write(`${snippet}\n`);
+      return;
+    }
+
     if (sub !== 'status') {
       throw new LmError({
         code: 'INVALID_INPUT',
-        message: 'Expected: liquid-mail window status',
+        message: 'Expected: liquid-mail window status|env',
         exitCode: 2,
         retryable: false,
-        suggestions: ['Run: liquid-mail window status'],
+        suggestions: ['Run: liquid-mail window status', 'Run: liquid-mail window env'],
       });
     }
 
@@ -338,7 +349,7 @@ async function run(): Promise<void> {
         message: 'Missing LIQUID_MAIL_WINDOW_ID.',
         exitCode: 2,
         retryable: false,
-        suggestions: ['Set LIQUID_MAIL_WINDOW_ID (per terminal)', 'Or run: liquid-mail hooks install'],
+        suggestions: ['Set LIQUID_MAIL_WINDOW_ID (per terminal)', 'Or run: liquid-mail window env'],
       });
     }
 

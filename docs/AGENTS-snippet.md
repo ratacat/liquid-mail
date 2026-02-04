@@ -68,3 +68,6 @@ Troubleshooting:
 Identity:
 - Prefer setting `LIQUID_MAIL_AGENT_ID` so tools don’t rely on “remembering” IDs.
 - Prefer setting `LIQUID_MAIL_WINDOW_ID` (unique per terminal) and let Liquid Mail pin a topic per window.
+
+Tip:
+- Print the recommended shell snippet with `liquid-mail window env`.

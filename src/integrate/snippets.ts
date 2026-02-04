@@ -32,6 +32,10 @@ Set a per-terminal window id (so concurrent swarms are distinguishable):
 
 Liquid Mail will pin a topic per window id after the first post.
 
+Print the recommended shell snippet:
+
+- \`liquid-mail window env\`
+
 ### Posting Format (Machine-Friendly)
 
 - Prefer 5-15 lines over walls of text.

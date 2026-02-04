@@ -30,7 +30,7 @@ curl -fsSL https://raw.githubusercontent.com/ratacat/liquid-mail/main/install.sh
 Optional: also print the shell hook snippet during install:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/ratacat/liquid-mail/main/install.sh | bash -s -- --hooks
+curl -fsSL https://raw.githubusercontent.com/ratacat/liquid-mail/main/install.sh | bash -s -- --window-env
 ```
 
 Local install (dev):
