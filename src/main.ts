@@ -12,7 +12,7 @@ import { detectDecision } from './decisions/detectDecision';
 import { extractDecisions } from './decisions/extract';
 import { indexDecisions } from './decisions/index';
 import { integrateProject, type IntegrateTarget } from './integrate/integrate';
-import { hookSnippet } from './hooks/snippets';
+import { windowEnvSnippet } from './window/envSnippet';
 import { notifyForAgent } from './notify/notify';
 import { chooseTopicFromMatches, type WorkspaceSearchMatch } from './topics/autoTopic';
 import { resolveTopicForMessage } from './topics/resolveTopic';
@@ -25,13 +25,12 @@ function printHelp(): void {
     'liquid-mail',
     '',
     'Commands:',
-    '  post        Post a message (hooks TBD)',
+    '  post        Post a message',
     '  summarize   Show Honcho session summaries (TBD)',
     '  query       Search messages (TBD)',
     '  decisions   List/search decision messages (TBD)',
     '  topics      List Honcho sessions (TBD)',
     '  notify      Context-based notifications (TBD)',
-    '  hooks       Print optional shell hook snippets',
     '  window      Show window/topic state',
     '  integrate   Install project-level instructions (claude/codex/opencode)',
     '  schema      Print JSON schemas used by Liquid Mail',
@@ -302,17 +301,17 @@ async function run(): Promise<void> {
     if (sub !== 'install') {
       throw new LmError({
         code: 'INVALID_INPUT',
-        message: 'Expected: liquid-mail hooks install',
+        message: 'Expected: liquid-mail hooks install (deprecated; use: liquid-mail window env)',
         exitCode: 2,
         retryable: false,
-        suggestions: ['Run: liquid-mail hooks install'],
+        suggestions: ['Run: liquid-mail window env'],
       });
     }
 
     const shellPath = process.env.SHELL ?? '';
     const shellName = shellPath.split('/').pop() ?? '';
     const shell = shellName === 'zsh' ? 'zsh' : 'bash';
-    const snippet = hookSnippet(shell);
+    const snippet = windowEnvSnippet(shell);
 
     if (mode === 'json') printJson({ ok: true, data: { shell, snippet } });
     else process.stdout.write(`${snippet}\n`);
@@ -325,7 +324,7 @@ async function run(): Promise<void> {
       const shellPath = process.env.SHELL ?? '';
       const shellName = shellPath.split('/').pop() ?? '';
       const shell = shellName === 'zsh' ? 'zsh' : 'bash';
-      const snippet = hookSnippet(shell);
+      const snippet = windowEnvSnippet(shell);
 
       if (mode === 'json') printJson({ ok: true, data: { shell, snippet } });
       else process.stdout.write(`${snippet}\n`);

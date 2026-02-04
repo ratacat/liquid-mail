@@ -85,7 +85,7 @@ Copy/paste for a project's `AGENTS.md`:
 To show `notify` output on shell start (opt-in):
 
 ```bash
-liquid-mail hooks install
+liquid-mail window env
 ```
 
 Then add the printed snippet to your shell rc and set:

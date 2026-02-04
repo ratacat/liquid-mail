@@ -1,7 +1,7 @@
-export type HookShell = 'bash' | 'zsh';
+export type ShellName = 'bash' | 'zsh';
 
-export function hookSnippet(shell: HookShell): string {
-  const header = `# Liquid Mail notify hook (${shell})`;
+export function windowEnvSnippet(shell: ShellName): string {
+  const header = `# Liquid Mail window env (${shell})`;
   const body = [
     'if [ -z "${LIQUID_MAIL_WINDOW_ID:-}" ]; then',
     '  if command -v uuidgen >/dev/null 2>&1; then',

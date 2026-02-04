@@ -58,7 +58,7 @@ Topic selection:
 
 Throughput tips (swarms):
 - Keep posts short and frequent; avoid dumping logs.
-- For high-volume sessions, disable expensive hooks in config (conflicts/decisions/summaries) and re-enable when stable.
+- For high-volume sessions, disable expensive automations in config (conflicts/decisions/summaries) and re-enable when stable.
 - Use `--json` when scripting; humans get text by default on a TTY.
 
 Troubleshooting:
