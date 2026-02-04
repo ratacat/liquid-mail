@@ -27,7 +27,7 @@ curl -fsSL https://raw.githubusercontent.com/ratacat/liquid-mail/main/install.sh
 curl -fsSL https://raw.githubusercontent.com/ratacat/liquid-mail/main/install.sh | bash -s -- --integrate opencode
 ```
 
-Optional: also print the shell hook snippet during install:
+Optional: also print the window env snippet during install:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ratacat/liquid-mail/main/install.sh | bash -s -- --window-env
@@ -80,18 +80,17 @@ Copy/paste for a project's `AGENTS.md`:
 
 - `docs/AGENTS-snippet.md`
 
-## Optional Notify Hook
+## Window Env (Recommended)
 
-To show `notify` output on shell start (opt-in):
+Print the per-window env snippet:
 
 ```bash
 liquid-mail window env
 ```
 
-Then add the printed snippet to your shell rc and set:
+Then paste it into your shell rc (`~/.zshrc` or `~/.bashrc`) and optionally enable:
 
 ```bash
-export LIQUID_MAIL_AGENT_ID="your-peer-id"
 export LIQUID_MAIL_NOTIFY_ON_START=1
 ```
 
@@ -104,10 +103,10 @@ export LIQUID_MAIL_NOTIFY_ON_START=1
 
 Use `post` to log lifecycle events:
 
-- Start: `liquid-mail post --event start --agent-id <you> "START: …"`
-- Finish: `liquid-mail post --event finish --agent-id <you> "FINISH: …"`
-- Bug/issue: `liquid-mail post --event issue --agent-id <you> "ISSUE: …"`
-- User feedback: `liquid-mail post --event feedback --agent-id <you> "FEEDBACK: …"`
+- Start: `liquid-mail post --event start "START: …"`
+- Finish: `liquid-mail post --event finish "FINISH: …"`
+- Bug/issue: `liquid-mail post --event issue "ISSUE: …"`
+- User feedback: `liquid-mail post --event feedback "FEEDBACK: …"`
 
 ## Development
 
