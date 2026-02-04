@@ -27,7 +27,7 @@ Options:
   -h, --help               Show help
 
 Environment:
-  LIQUID_MAIL_HONCHO_API_KEY, LIQUID_MAIL_HONCHO_WORKSPACE_ID can be used instead of a config file.
+  LIQUID_MAIL_HONCHO_API_KEY, LIQUID_MAIL_HONCHO_WORKSPACE_ID (or HONCHO_API_KEY, HONCHO_WORKSPACE_ID) can be used instead of a config file.
 EOF
 }
 

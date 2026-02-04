@@ -190,9 +190,15 @@ function mergeConfig(base: LiquidMailConfig, partial: unknown): LiquidMailConfig
 function applyEnvOverrides(config: LiquidMailConfig): LiquidMailConfig {
   const next: LiquidMailConfig = structuredClone(config);
 
+  // Prefer Liquid Mail-specific env vars, but fall back to Honcho-standard names.
   if (process.env.LIQUID_MAIL_HONCHO_BASE_URL) next.honcho.baseUrl = process.env.LIQUID_MAIL_HONCHO_BASE_URL;
+  else if (process.env.HONCHO_URL) next.honcho.baseUrl = process.env.HONCHO_URL;
+
   if (process.env.LIQUID_MAIL_HONCHO_API_KEY) next.honcho.apiKey = process.env.LIQUID_MAIL_HONCHO_API_KEY;
+  else if (process.env.HONCHO_API_KEY) next.honcho.apiKey = process.env.HONCHO_API_KEY;
+
   if (process.env.LIQUID_MAIL_HONCHO_WORKSPACE_ID) next.honcho.workspaceId = process.env.LIQUID_MAIL_HONCHO_WORKSPACE_ID;
+  else if (process.env.HONCHO_WORKSPACE_ID) next.honcho.workspaceId = process.env.HONCHO_WORKSPACE_ID;
 
   return next;
 }
@@ -226,6 +232,7 @@ export function requireHonchoAuth(config: LiquidMailConfig): { apiKey: string; w
       retryable: false,
       suggestions: [
         'Set LIQUID_MAIL_HONCHO_API_KEY and LIQUID_MAIL_HONCHO_WORKSPACE_ID',
+        'Or set HONCHO_API_KEY and HONCHO_WORKSPACE_ID',
         'Or create ./.liquid-mail.toml (project) or ~/.liquid-mail.toml (user) with [honcho] api_key=..., workspace_id=...',
         'Or set LIQUID_MAIL_CONFIG to point to a project config file',
       ],

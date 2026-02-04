@@ -36,6 +36,14 @@ export LIQUID_MAIL_HONCHO_API_KEY="hc_your_api_key"
 export LIQUID_MAIL_HONCHO_WORKSPACE_ID="ws_your_workspace_id"
 ```
 
+Honcho-standard env var names are also supported:
+
+```bash
+export HONCHO_API_KEY="hc_your_api_key"
+export HONCHO_WORKSPACE_ID="ws_your_workspace_id"
+export HONCHO_URL="https://api.honcho.dev"
+```
+
 Config file (recommended):
 
 ```toml
