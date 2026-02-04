@@ -293,7 +293,7 @@ async function run(): Promise<void> {
     const items = await notifyForAgent(notifyParams);
 
     if (mode === 'json') printJson({ ok: true, data: { items } });
-    else process.stdout.write(JSON.stringify({ items }, null, 2) + '\n');
+    else process.stdout.write(formatNotifyText(items));
     return;
   }
 
@@ -597,3 +597,17 @@ run().catch((err: unknown) => {
   });
   process.exit(1);
 });
+
+function formatNotifyText(items: { topic_id: string; reason: string; excerpt: string; confidence: number }[]): string {
+  if (items.length === 0) return 'Liquid Mail: no updates.\n';
+
+  const lines: string[] = [];
+  lines.push(`Liquid Mail: ${items.length} item${items.length === 1 ? '' : 's'}`);
+
+  for (const item of items) {
+    const confidence = item.confidence.toFixed(2);
+    lines.push(`- ${item.reason} ${item.topic_id} (${confidence}): ${item.excerpt}`);
+  }
+
+  return lines.join('\n') + '\n';
+}
