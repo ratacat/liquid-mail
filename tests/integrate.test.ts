@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { access, mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -63,5 +63,21 @@ describe('integrate --to claude', () => {
     const result = await integrateProject({ cwd: dir, target: 'claude' });
     expect(result.files[0]?.path).toBe(agentsPath);
     expect(await fileExists(join(dir, 'AGENTS.md'))).toBe(true);
+  });
+});
+
+describe('integrate runs at repo root', () => {
+  it('writes to root AGENTS.md when invoked from a subdirectory', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'liquid-mail-integrate-'));
+    await mkdir(join(dir, '.git'));
+    await mkdir(join(dir, 'subdir'));
+
+    const result = await integrateProject({ cwd: join(dir, 'subdir'), target: 'codex' });
+    expect(result.files[0]?.path).toBe(join(dir, 'AGENTS.md'));
+
+    const text = await readFile(join(dir, 'AGENTS.md'), 'utf8');
+    expect(text).toContain(LIQUID_MAIL_AGENTS_BLOCK_START);
+    expect(text).toContain(LIQUID_MAIL_AGENTS_BLOCK_END);
+    expect(await fileExists(join(dir, 'subdir', 'AGENTS.md'))).toBe(false);
   });
 });

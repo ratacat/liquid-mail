@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { existsSync } from 'node:fs';
+import { dirname, join, parse } from 'node:path';
 
 import { LmError } from '../cli/errors';
 import { buildManagedBlock, upsertManagedBlock } from './textBlocks';
@@ -23,9 +24,10 @@ export type IntegrateResult = {
 };
 
 export async function integrateProject(opts: { cwd: string; target: IntegrateTarget }): Promise<IntegrateResult> {
-  if (opts.target === 'claude') return await integrateClaudeProject(opts.cwd);
-  if (opts.target === 'codex') return await integrateManagedMarkdownFile('codex', join(opts.cwd, 'AGENTS.md'));
-  return await integrateOpenCode(opts.cwd);
+  const root = findGitRoot(opts.cwd) ?? opts.cwd;
+  if (opts.target === 'claude') return await integrateClaudeProject(root);
+  if (opts.target === 'codex') return await integrateManagedMarkdownFile('codex', join(root, 'AGENTS.md'));
+  return await integrateOpenCode(root);
 }
 
 async function integrateClaudeProject(cwd: string): Promise<IntegrateResult> {
@@ -215,4 +217,18 @@ function looksLikeAgentsPointerClaudeMd(text: string): boolean {
 
   // If there's basically no additional instruction content, treat it as a pointer-only CLAUDE.md.
   return withoutAgentsRef.length < 24;
+}
+
+function findGitRoot(startDir: string): string | undefined {
+  let current = startDir;
+  const root = parse(current).root;
+
+  while (true) {
+    const gitPath = join(current, '.git');
+    if (existsSync(gitPath)) return current;
+    if (current === root) break;
+    current = dirname(current);
+  }
+
+  return undefined;
 }
