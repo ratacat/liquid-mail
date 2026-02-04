@@ -14,15 +14,6 @@ export function windowEnvSnippet(shell: ShellName): string {
     '  fi',
     '  export LIQUID_MAIL_WINDOW_ID',
     'fi',
-    'if [ "${LIQUID_MAIL_NOTIFY_ON_START:-0}" = "1" ] && [ -n "${LIQUID_MAIL_WINDOW_ID:-}" ] && [ -z "${LIQUID_MAIL_NOTIFY_RAN:-}" ]; then',
-    '  case "$-" in',
-    '    *i*)',
-    '      LIQUID_MAIL_NOTIFY_RAN=1',
-    '      export LIQUID_MAIL_NOTIFY_RAN',
-    '      liquid-mail notify --text || true',
-    '      ;;',
-    '  esac',
-    'fi',
     end,
   ];
   return [header, ...body].join('\n');

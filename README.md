@@ -93,16 +93,7 @@ if [ -z "${LIQUID_MAIL_WINDOW_ID:-}" ]; then
   fi
   export LIQUID_MAIL_WINDOW_ID
 fi
-if [ "${LIQUID_MAIL_NOTIFY_ON_START:-0}" = "1" ] && [ -n "${LIQUID_MAIL_WINDOW_ID:-}" ]; then
-  liquid-mail notify || true
-fi
 # END LIQUID MAIL WINDOW ENV
-```
-
-Optional notify-on-start:
-
-```bash
-export LIQUID_MAIL_NOTIFY_ON_START=1
 ```
 
 ## Topic Pinning

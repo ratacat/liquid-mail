@@ -348,9 +348,6 @@ EOF
       say "${C_CYAN}----- BEGIN LIQUID MAIL WINDOW ENV -----${C_RESET}"
       "${bin_dir}/liquid-mail" window env || "${bin_dir}/liquid-mail" hooks install || true
       say "${C_CYAN}----- END LIQUID MAIL WINDOW ENV -----${C_RESET}"
-      say ""
-      say "Optional:"
-      say "  export LIQUID_MAIL_NOTIFY_ON_START=1"
     fi
   fi
 
