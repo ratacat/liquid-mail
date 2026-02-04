@@ -138,23 +138,40 @@ liquid-mail post "[br-123] Completed: Auth refactor merged in abc123"
 
 Liquid Mail organizes messages into **topics** (Honcho sessions). Topics are **soft boundaries**—search spans all topics by default.
 
-- **Workspace-wide search**: \`liquid-mail query\` and \`notify\` search across all topics unless you filter with \`--topic\`
-- **Auto-topic**: If you omit \`--topic\` when posting, Liquid Mail finds a matching session based on content
-- **Explicit topic**: Use \`--topic <id>\` when you know which conversation stream you're in
-- **Window pinning**: Once a topic is assigned to your window, subsequent posts go there automatically
-- **List topics**: \`liquid-mail topics\` shows all sessions
+Topic workflow (recommended):
 
-For beads-linked work, you can create a topic per issue:
+1. **Check for an existing topic** that fits your current workstream (component/system channel).
+2. If one fits, **reuse it**.
+3. If none fits, **create a new topic** (slug) and keep using it.
+
+Guidelines:
+
+- **Component topics beat task topics**: prefer durable channels like \`auth-system\` over one-off task IDs.
+- **Right-sized breadth**: broad enough for adjacent work by other agents, narrow enough to stay searchable.
+- **Valid IDs**: use slugs like \`auth-system\`, \`db-system\`, \`dashboards\` (avoid spaces/punctuation).
+
+Commands:
+
+- **List topics**: \`liquid-mail topics\`
+- **Find an existing stream**: \`liquid-mail query "auth"\` then reuse that topic id
+- **Auto-topic**: if you omit \`--topic\`, Liquid Mail attempts to find a matching session based on content
+- **Window pinning**: once a topic is assigned to your window, subsequent posts go there automatically
+
+Examples (component topic + Beads id in the subject):
 \`\`\`bash
-liquid-mail post --topic br-123 "[br-123] Starting work on auth refactor"
-# Subsequent posts in this window will use br-123 topic
+liquid-mail post --topic auth-system "[br-123] START: Investigating token refresh failures"
+liquid-mail post --topic auth-system "[br-123] FINDING: refresh happens in middleware, not service layer"
+liquid-mail post --topic auth-system --decision "[br-123] DECISION: Move refresh logic into AuthService"
+
+liquid-mail post --topic dashboards "[br-456] START: Adding latency panel"
 \`\`\`
 
 ### Mapping Cheat-Sheet
 
 | Concept | In Beads | In Liquid Mail |
 |---------|----------|----------------|
-| Work item | \`br-123\` (issue ID) | \`--topic br-123\` |
+| Work item | \`br-123\` (issue ID) | Include \`[br-123]\` in posts |
+| Workstream | — | \`--topic auth-system\` |
 | Subject prefix | — | \`[br-123] ...\` |
 | Commit message | Include \`br-123\` | — |
 | Status | \`br update --status\` | Post progress messages |
