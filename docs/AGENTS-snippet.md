@@ -81,9 +81,12 @@ Commands:
 
 - **List topics**: `liquid-mail topics`
 - **Find an existing stream**: `liquid-mail query "auth"` then reuse that topic id
-- **Auto-topic**: if you omit `--topic`, Liquid Mail attempts to find a matching session based on content
 - **Window pinning**: once a topic is assigned to your window, subsequent posts go there automatically
 - **Create topics explicitly**: pick a durable component slug and use `--topic <slug>` to start a new stream
+- **Rename a topic**: `liquid-mail topic rename <old-name> <new-name>` (creates an alias)
+- **Merge topics**: `liquid-mail topic merge <A> <B> --into <C>` (creates new topic C, redirects A and B)
+
+**Important**: The `--topic` flag is required for your first post. Topic names must be 4-50 characters, lowercase letters/numbers/hyphens only (e.g., `auth-system`, `db-migrations`). Legacy UUID-style names are not allowed.
 
 Examples (component topic + Beads id in the subject):
 ```bash

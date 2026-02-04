@@ -15,11 +15,7 @@ export type LiquidMailConfig = {
     workspaceId: string | undefined;
   };
   topics: {
-    detectionEnabled: boolean;
-    autoCreate: boolean;
-    autoAssignThreshold: number;
-    autoAssignK: number;
-    autoAssignMinHits: number;
+    // All auto-topic options removed - topics are now explicit only
   };
   conflicts: {
     enabled: boolean;
@@ -50,11 +46,7 @@ function defaultConfig(): LiquidMailConfig {
       workspaceId: undefined,
     },
     topics: {
-      detectionEnabled: true,
-      autoCreate: true,
-      autoAssignThreshold: 0.8,
-      autoAssignK: 10,
-      autoAssignMinHits: 2,
+      // All auto-topic options removed - topics are now explicit only
     },
     conflicts: {
       enabled: true,
@@ -139,18 +131,21 @@ function mergeConfig(base: LiquidMailConfig, partial: unknown): LiquidMailConfig
 
   const topics = partial['topics'];
   if (isRecord(topics)) {
-    merged.topics.detectionEnabled =
-      getBoolean(topics, 'detection_enabled') ?? getBoolean(topics, 'detectionEnabled') ?? merged.topics.detectionEnabled;
-    merged.topics.autoCreate = getBoolean(topics, 'auto_create') ?? getBoolean(topics, 'autoCreate') ?? merged.topics.autoCreate;
-    merged.topics.autoAssignThreshold =
-      getNumber(topics, 'auto_assign_threshold') ?? getNumber(topics, 'autoAssignThreshold') ?? merged.topics.autoAssignThreshold;
-    merged.topics.autoAssignK = getNumber(topics, 'auto_assign_k') ?? getNumber(topics, 'autoAssignK') ?? merged.topics.autoAssignK;
-    merged.topics.autoAssignMinHits =
-      getNumber(topics, 'auto_assign_min_hits') ?? getNumber(topics, 'autoAssignMinHits') ?? merged.topics.autoAssignMinHits;
-
-    const maxActive = getNumber(topics, 'max_active') ?? getNumber(topics, 'maxActive');
-    if (maxActive !== undefined) {
-      console.warn('Warning: topics.max_active is deprecated and ignored');
+    // All topic auto-detection options are deprecated - topics are now explicit only
+    const deprecatedKeys = [
+      'detection_enabled', 'detectionEnabled',
+      'auto_create', 'autoCreate',
+      'auto_assign_threshold', 'autoAssignThreshold',
+      'auto_assign_k', 'autoAssignK',
+      'auto_assign_min_hits', 'autoAssignMinHits',
+      'max_active', 'maxActive',
+      'consolidation_strategy', 'consolidationStrategy',
+    ];
+    for (const key of deprecatedKeys) {
+      if (topics[key] !== undefined) {
+        console.warn(`Warning: topics.${key} is deprecated and ignored (topics are now explicit only)`);
+        break; // Only warn once
+      }
     }
   }
 

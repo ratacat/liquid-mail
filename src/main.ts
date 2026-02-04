@@ -14,7 +14,6 @@ import { indexDecisions } from './decisions/index';
 import { integrateProject, type IntegrateTarget } from './integrate/integrate';
 import { windowEnvSnippet } from './window/envSnippet';
 import { notifyForAgent } from './notify/notify';
-import { chooseTopicFromMatches, type WorkspaceSearchMatch } from './topics/autoTopic';
 import { LIQUID_MAIL_VERSION } from './version';
 import { getPinnedTopicId, replacePinnedTopicId, resolveAlias, setAlias, setPinnedTopicId } from './state/state';
 import { statePathForCwd } from './state/state';
@@ -40,7 +39,6 @@ function printHelpGlobal(): void {
     '  window      Show window/topic state',
     '  integrate   Install project-level instructions (claude/codex/opencode)',
     '  schema      Print JSON schemas used by Liquid Mail',
-    '  topic-demo  Demo topic dominance algorithm (offline)',
     '  config      Show resolved config (redacts secrets)',
     '',
     'Global flags:',
@@ -52,7 +50,6 @@ function printHelpGlobal(): void {
     '',
     'Examples:',
     '  liquid-mail schema --json',
-    '  liquid-mail topic-demo A A A A B',
     '  liquid-mail integrate --to claude',
   ];
   process.stdout.write(text.join('\n') + '\n');
@@ -260,16 +257,6 @@ async function run(): Promise<void> {
 
     if (mode === 'json') printJson({ ok: true, data: { config: redacted, config_path: configPath } });
     else process.stdout.write(JSON.stringify({ config: redacted, config_path: configPath }, null, 2) + '\n');
-    return;
-  }
-
-  if (command === 'topic-demo') {
-    const matches: WorkspaceSearchMatch[] = positionals.map((sessionId) => ({ sessionId }));
-    const threshold = Number(getFlagString(flags, 'threshold') ?? '0.8');
-    const minHits = Number(getFlagString(flags, 'minHits') ?? '2');
-    const choice = chooseTopicFromMatches(matches, { threshold, minHits });
-    if (mode === 'json') printJson({ ok: true, data: choice });
-    else process.stdout.write(`chosen=${choice.chosenTopicId ?? '(none)'} dominance=${choice.dominance}\n`);
     return;
   }
 
