@@ -24,6 +24,14 @@ Liquid Mail stores agent updates in Honcho sessions (topics).
 - On bugs/issues: \`liquid-mail post --event issue --agent-id <you> "ISSUE: …"\`
 - On user feedback: \`liquid-mail post --event feedback --agent-id <you> "FEEDBACK: …"\`
 
+### Window Identity (Recommended)
+
+Set a per-terminal window id (so concurrent swarms are distinguishable):
+
+- \`export LIQUID_MAIL_WINDOW_ID="lm-..."\`
+
+Liquid Mail will pin a topic per window id after the first post.
+
 ### Posting Format (Machine-Friendly)
 
 - Prefer 5-15 lines over walls of text.

@@ -89,6 +89,11 @@ export LIQUID_MAIL_AGENT_ID="your-peer-id"
 export LIQUID_MAIL_NOTIFY_ON_START=1
 ```
 
+## Window ID + Topic Pinning (Recommended for swarms)
+
+- Set `LIQUID_MAIL_WINDOW_ID` (unique per terminal window).
+- Liquid Mail will automatically pin a topic per window id after the first `post`.
+
 ## Agent Workflow (Recommended)
 
 Use `post` to log lifecycle events:

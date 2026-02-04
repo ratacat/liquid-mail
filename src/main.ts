@@ -17,6 +17,7 @@ import { notifyForAgent } from './notify/notify';
 import { chooseTopicFromMatches, type WorkspaceSearchMatch } from './topics/autoTopic';
 import { resolveTopicForMessage } from './topics/resolveTopic';
 import { LIQUID_MAIL_VERSION } from './version';
+import { getPinnedTopicId, setPinnedTopicId } from './state/state';
 
 function printHelp(): void {
   const text = [
@@ -267,7 +268,10 @@ async function run(): Promise<void> {
 
   if (command === 'notify') {
     const agentId =
-      getFlagString(flags, 'agent-id') ?? getFlagString(flags, 'agentId') ?? process.env.LIQUID_MAIL_AGENT_ID;
+      getFlagString(flags, 'agent-id') ??
+      getFlagString(flags, 'agentId') ??
+      process.env.LIQUID_MAIL_WINDOW_ID ??
+      process.env.LIQUID_MAIL_AGENT_ID;
     const since = getFlagString(flags, 'since');
     if (!agentId) {
       throw new LmError({
@@ -316,7 +320,10 @@ async function run(): Promise<void> {
   if (command === 'post') {
     const topicId = getFlagString(flags, 'topic');
     const agentId =
-      getFlagString(flags, 'agent-id') ?? getFlagString(flags, 'agentId') ?? process.env.LIQUID_MAIL_AGENT_ID;
+      getFlagString(flags, 'agent-id') ??
+      getFlagString(flags, 'agentId') ??
+      process.env.LIQUID_MAIL_WINDOW_ID ??
+      process.env.LIQUID_MAIL_AGENT_ID;
     const decisionFlag = flags['decision'] === true || getFlagString(flags, 'decision') === 'true';
     const bypassConflicts = flags['yes'] === true || flags['y'] === true;
     const event = getFlagString(flags, 'event');
@@ -338,6 +345,14 @@ async function run(): Promise<void> {
 
     let resolvedTopicId = topicId;
     let topicDecision = undefined as Awaited<ReturnType<typeof resolveTopicForMessage>> | undefined;
+
+    if (!resolvedTopicId) {
+      const windowId = process.env.LIQUID_MAIL_WINDOW_ID;
+      if (windowId) {
+        const pinned = await getPinnedTopicId(process.cwd(), windowId);
+        if (pinned) resolvedTopicId = pinned;
+      }
+    }
 
     if (!resolvedTopicId) {
       topicDecision = await resolveTopicForMessage({
@@ -423,6 +438,15 @@ async function run(): Promise<void> {
       messageRequest.metadata = { 'lm.kind': 'event', 'lm.event': event, 'lm.agent_id': peerId };
     }
     const created = await createMessage(client, resolvedTopicId, messageRequest);
+
+    const windowId = process.env.LIQUID_MAIL_WINDOW_ID;
+    if (windowId) {
+      try {
+        await setPinnedTopicId(process.cwd(), windowId, resolvedTopicId);
+      } catch {
+        // Non-fatal; state is best-effort only.
+      }
+    }
 
     let decisionIndexResult: unknown = undefined;
     if (config.decisions.enabled && decisionDetection.isDecision) {
