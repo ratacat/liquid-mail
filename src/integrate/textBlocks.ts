@@ -2,14 +2,17 @@ export function buildManagedBlock(startMarker: string, body: string, end: string
   return [startMarker, body.trim(), end].join('\n');
 }
 
+const LEGACY_MARKER = '<!-- BEGIN LIQUID MAIL -->';
+
 /**
  * Find the start of a managed block.
  * Handles both versioned markers (<!-- BEGIN LIQUID MAIL (v:abc123) -->)
  * and legacy/generic markers (<!-- BEGIN LIQUID MAIL --> or any custom start).
  */
 function findBlockBoundaries(text: string, startHint: string, end: string): { startIndex: number; startEndIndex: number; endIndex: number } | undefined {
-  // For Liquid Mail blocks, try versioned marker first
+  // For Liquid Mail blocks, check both versioned and legacy markers
   if (startHint.includes('BEGIN LIQUID MAIL')) {
+    // Try versioned marker first
     const versionedMatch = text.match(/<!-- BEGIN LIQUID MAIL \(v:[a-f0-9]+\) -->/);
     if (versionedMatch) {
       const startIndex = text.indexOf(versionedMatch[0]);
@@ -19,9 +22,19 @@ function findBlockBoundaries(text: string, startHint: string, end: string): { st
         return { startIndex, startEndIndex, endIndex };
       }
     }
+
+    // Try legacy marker (files created before versioning)
+    const legacyIndex = text.indexOf(LEGACY_MARKER);
+    if (legacyIndex !== -1) {
+      const startEndIndex = legacyIndex + LEGACY_MARKER.length;
+      const endIndex = text.indexOf(end, startEndIndex);
+      if (endIndex > startEndIndex) {
+        return { startIndex: legacyIndex, startEndIndex, endIndex };
+      }
+    }
   }
 
-  // Fall back to exact start marker match (legacy or generic)
+  // Fall back to exact start marker match (generic markers)
   const startIndex = text.indexOf(startHint);
   if (startIndex === -1) return undefined;
 
