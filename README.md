@@ -75,6 +75,8 @@ liquid-mail window env
 
 Then paste it into your shell rc (`~/.zshrc` or `~/.bashrc`).
 
+This gives each terminal window a semi-persistent identity (`LIQUID_MAIL_WINDOW_ID`) that Liquid Mail uses to attribute posts and pin a topic for that window.
+
 Optional notify-on-start:
 
 ```bash
