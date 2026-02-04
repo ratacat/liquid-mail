@@ -20,7 +20,7 @@ describe('HonchoClient.requestJson', () => {
         headers: { 'content-type': 'application/json' },
       })) as unknown as typeof fetch;
 
-    const client = new HonchoClient({ baseUrl: 'https://api.example.com', apiKey: 'x', workspaceId: 'ws' });
+    const client = new HonchoClient({ baseUrl: 'https://api.example.com', apiKey: 'x', workspaceId: 'ws', maxRetries: 0 });
     const result = await client.requestJson<{ ok: boolean; data: { value: number } }>('GET', '/test');
     expect(result.ok).toBe(true);
     expect(result.data.value).toBe(1);
@@ -33,7 +33,7 @@ describe('HonchoClient.requestJson', () => {
         headers: { 'content-type': 'application/json' },
       })) as unknown as typeof fetch;
 
-    const client = new HonchoClient({ baseUrl: 'https://api.example.com', apiKey: 'x', workspaceId: 'ws' });
+    const client = new HonchoClient({ baseUrl: 'https://api.example.com', apiKey: 'x', workspaceId: 'ws', maxRetries: 0 });
 
     try {
       await client.requestJson('GET', '/test');
@@ -42,7 +42,7 @@ describe('HonchoClient.requestJson', () => {
       expect(err).toBeInstanceOf(LmError);
       const lmError = err as LmError;
       expect(lmError.code).toBe('HONCHO_AUTH_FAILED');
-      expect(lmError.details).toEqual({ error: 'nope' });
+      expect(lmError.details).toEqual({ message: 'nope' });
     }
   });
 
@@ -53,7 +53,7 @@ describe('HonchoClient.requestJson', () => {
         headers: { 'content-type': 'text/plain' },
       })) as unknown as typeof fetch;
 
-    const client = new HonchoClient({ baseUrl: 'https://api.example.com', apiKey: 'x', workspaceId: 'ws' });
+    const client = new HonchoClient({ baseUrl: 'https://api.example.com', apiKey: 'x', workspaceId: 'ws', maxRetries: 0 });
 
     try {
       await client.requestJson('GET', '/test');
@@ -62,7 +62,7 @@ describe('HonchoClient.requestJson', () => {
       expect(err).toBeInstanceOf(LmError);
       const lmError = err as LmError;
       expect(lmError.code).toBe('HONCHO_UNAVAILABLE');
-      expect(lmError.details).toBe('server down');
+      expect(lmError.details).toEqual({ message: 'HTTP 500' });
     }
   });
 });

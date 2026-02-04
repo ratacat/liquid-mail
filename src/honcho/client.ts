@@ -1,107 +1,124 @@
+import { AuthenticationError, Honcho, HonchoError, PermissionDeniedError, RateLimitError, ServerError } from '@honcho-ai/sdk';
+
 import { LmError } from '../cli/errors';
 
 export type HonchoClientOpts = {
   baseUrl: string;
   apiKey: string;
   workspaceId: string;
+  maxRetries?: number;
+  timeoutMs?: number;
 };
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 export class HonchoClient {
-  private readonly baseUrl: string;
-  private readonly apiKey: string;
+  public readonly honcho: Honcho;
   public readonly workspaceId: string;
 
   public constructor(opts: HonchoClientOpts) {
-    this.baseUrl = opts.baseUrl.replace(/\/+$/, '');
-    this.apiKey = opts.apiKey;
-    this.workspaceId = opts.workspaceId;
+    this.honcho = new Honcho({
+      apiKey: opts.apiKey,
+      baseURL: opts.baseUrl,
+      workspaceId: opts.workspaceId,
+      maxRetries: opts.maxRetries,
+      timeout: opts.timeoutMs,
+    });
+    this.workspaceId = this.honcho.workspaceId;
+  }
+
+  public get baseUrl(): string {
+    return this.honcho.baseURL;
   }
 
   public async requestJson<T>(method: HttpMethod, path: string, body?: unknown): Promise<T> {
-    const url = path.startsWith('http') ? path : `${this.baseUrl}${path}`;
+    const { requestPath, query } = normalizeRequestPath(path, this.baseUrl);
 
-    const init: RequestInit = {
-      method,
-      headers: {
-        authorization: `Bearer ${this.apiKey}`,
-        'content-type': 'application/json',
-      },
-    };
-
-    if (body !== undefined) init.body = JSON.stringify(body);
-
-    const res = await fetch(url, init);
-
-    const text = await res.text();
-    const contentType = res.headers.get('content-type') ?? '';
-    const isJson = contentType.includes('application/json');
-    const parsed = isJson && text ? safeJsonParse(text) : undefined;
-
-    if (!res.ok) {
-      throw mapHonchoError(res.status, parsed, text);
+    try {
+      return await this.honcho.http.request<T>(method, requestPath, {
+        ...(body !== undefined ? { body } : {}),
+        ...(query ? { query } : {}),
+      });
+    } catch (err) {
+      throw mapHonchoSdkError(err);
     }
-
-    if (!isJson) {
-      // Some endpoints may return empty bodies; treat empty as undefined.
-      return safeJsonParse(text) as T;
-    }
-
-    return (parsed ?? safeJsonParse(text)) as T;
   }
 }
 
-function safeJsonParse(text: string): unknown {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return text;
+function normalizeRequestPath(
+  path: string,
+  baseUrl: string,
+): { requestPath: string; query?: Record<string, string | number | boolean | undefined> } {
+  if (!path.startsWith('http')) return { requestPath: path };
+
+  const url = new URL(path);
+  const base = new URL(baseUrl);
+
+  if (url.origin !== base.origin) {
+    return { requestPath: url.toString() };
   }
+
+  const query: Record<string, string> = {};
+  url.searchParams.forEach((value, key) => {
+    query[key] = value;
+  });
+
+  return { requestPath: `${url.pathname}`, ...(Object.keys(query).length ? { query } : {}) };
 }
 
-function mapHonchoError(status: number, parsed: unknown, rawText: string): LmError {
-  const details = parsed ?? rawText;
+function mapHonchoSdkError(err: unknown): LmError {
+  const detailsFromError = (e: HonchoError): unknown => e.body ?? { message: e.message };
 
-  if (status === 401 || status === 403) {
+  if (err instanceof AuthenticationError || err instanceof PermissionDeniedError) {
     return new LmError({
       code: 'HONCHO_AUTH_FAILED',
       message: 'Honcho request failed: unauthorized.',
       exitCode: 3,
       retryable: false,
       suggestions: ['Verify LIQUID_MAIL_HONCHO_API_KEY', 'Verify workspace permissions'],
-      details,
+      details: err instanceof HonchoError ? detailsFromError(err) : undefined,
     });
   }
 
-  if (status === 429) {
+  if (err instanceof RateLimitError) {
     return new LmError({
       code: 'RATE_LIMITED',
       message: 'Honcho request failed: rate limited.',
       exitCode: 4,
       retryable: true,
       suggestions: ['Retry with backoff', 'Reduce request volume'],
-      details,
+      details: detailsFromError(err),
     });
   }
 
-  if (status >= 500) {
+  if (err instanceof ServerError) {
     return new LmError({
       code: 'HONCHO_UNAVAILABLE',
       message: 'Honcho request failed: server error.',
       exitCode: 5,
       retryable: true,
       suggestions: ['Retry with backoff'],
-      details,
+      details: detailsFromError(err),
+    });
+  }
+
+  if (err instanceof HonchoError) {
+    return new LmError({
+      code: 'HONCHO_REQUEST_FAILED',
+      message: `Honcho request failed: HTTP ${err.status}.`,
+      exitCode: 6,
+      retryable: err.status >= 500,
+      suggestions: ['Re-run with --json and inspect error.details', 'Verify request parameters'],
+      details: detailsFromError(err),
     });
   }
 
   return new LmError({
     code: 'HONCHO_REQUEST_FAILED',
-    message: `Honcho request failed: HTTP ${status}.`,
+    message: 'Honcho request failed.',
     exitCode: 6,
-    retryable: status >= 500,
-    suggestions: ['Re-run with --json and inspect error.details', 'Verify request parameters'],
-    details,
+    retryable: true,
+    suggestions: ['Retry the command', 'Inspect network connectivity'],
+    details: err instanceof Error ? err.message : err,
   });
 }
