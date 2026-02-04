@@ -8,6 +8,7 @@
 - **Single source of truth**: Beads owns task state; Liquid Mail owns conversation/decisions
 - **Shared identifiers**: Include the Beads issue ID in posts (e.g., `[br-123] Refactoring auth module`)
 - **Decisions before action**: Post `DECISION:` messages before risky changes, not after
+- **Identity in user updates**: In every user-facing reply, include your window-name (derived from `LIQUID_MAIL_WINDOW_ID`) so humans can distinguish concurrent agents.
 
 ### Typical Flow
 
@@ -48,6 +49,7 @@ liquid-mail post "[br-123] Completed: Auth refactor merged in abc123"
 - **Prefixed** with ALL-CAPS tags: `FINDING:`, `DECISION:`, `QUESTION:`, `NEXT:`
 - **Include file paths** so others can jump in: `src/services/auth.ts:42`
 - **Include issue IDs** in brackets: `[br-123]`
+- **User-facing replies**: include `AGENT: <window-name>` near the top. Get it with `liquid-mail window name`.
 
 ### Topics
 
