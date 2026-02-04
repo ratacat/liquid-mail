@@ -13,6 +13,7 @@ curl -fsSL https://raw.githubusercontent.com/ratacat/liquid-mail/main/install.sh
 ```
 
 This prints a per-window shell snippet (copy/paste). It does not modify shell files.
+If the snippet is already detected in your shell rc, the installer will skip printing it.
 
 Project-level host integration (run from your project root):
 
@@ -80,17 +81,19 @@ This gives each terminal window a semi-persistent identity (`LIQUID_MAIL_WINDOW_
 Example snippet:
 
 ```bash
+# BEGIN LIQUID MAIL WINDOW ENV
 if [ -z "${LIQUID_MAIL_WINDOW_ID:-}" ]; then
   if command -v uuidgen >/dev/null 2>&1; then
-    LIQUID_MAIL_WINDOW_ID="lm-$(uuidgen | tr -d - | cut -c1-8)"
+    LIQUID_MAIL_WINDOW_ID="lm$(uuidgen | tr -d - | tr '[:upper:]' '[:lower:]' | cut -c1-12)"
   else
-    LIQUID_MAIL_WINDOW_ID="lm-$(date -u +%y%m%d-%H%M%S)-${RANDOM}${RANDOM}"
+    LIQUID_MAIL_WINDOW_ID="lm$(date -u +%y%m%d%H%M%S)${RANDOM}${RANDOM}"
   fi
   export LIQUID_MAIL_WINDOW_ID
 fi
 if [ "${LIQUID_MAIL_NOTIFY_ON_START:-0}" = "1" ] && [ -n "${LIQUID_MAIL_WINDOW_ID:-}" ]; then
   liquid-mail notify || true
 fi
+# END LIQUID MAIL WINDOW ENV
 ```
 
 Optional notify-on-start:

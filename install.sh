@@ -20,7 +20,7 @@ Options:
   --bin-dir <dir>          Install directory (default: ~/.local/bin)
   --config-path <path>     Config path (default: repo-root/.liquid-mail.toml or ~/.liquid-mail.toml)
   --integrate <target>     Project-level integration (claude|codex|opencode)
-  --window-env             Print per-window env snippet (default)
+  --window-env             Always print per-window env snippet (default: auto-detect; print only if missing)
   --no-window-env          Skip printing per-window env snippet
   --no-config              Do not create a config template
   --no-release             Skip release download attempt (build from source)
@@ -90,6 +90,60 @@ detect_platform() {
   printf '%s %s\n' "$os" "$arch"
 }
 
+init_colors() {
+  if [[ -t 1 ]]; then
+    C_CYAN=$'\033[36m'
+    C_DIM=$'\033[2m'
+    C_RESET=$'\033[0m'
+  else
+    C_CYAN=''
+    C_DIM=''
+    C_RESET=''
+  fi
+}
+
+window_env_rc_files() {
+  local shell_name
+  shell_name="$(basename "${SHELL:-}")"
+
+  case "$shell_name" in
+    zsh)
+      printf '%s\n' "${HOME}/.zshrc"
+      ;;
+    bash)
+      printf '%s\n' "${HOME}/.bashrc"
+      printf '%s\n' "${HOME}/.bash_profile"
+      ;;
+    *)
+      printf '%s\n' "${HOME}/.zshrc"
+      printf '%s\n' "${HOME}/.bashrc"
+      ;;
+  esac
+}
+
+has_window_env_snippet() {
+  local file="$1"
+  [[ -f "$file" ]] || return 1
+
+  # New marker (preferred).
+  grep -qF 'BEGIN LIQUID MAIL WINDOW ENV' "$file" && return 0
+  # Old marker.
+  grep -qF 'Liquid Mail window env' "$file" && return 0
+
+  return 1
+}
+
+detect_window_env_file() {
+  local file
+  for file in "$@"; do
+    if has_window_env_snippet "$file"; then
+      printf '%s\n' "$file"
+      return 0
+    fi
+  done
+  return 1
+}
+
 project_root() {
   if command -v git >/dev/null 2>&1; then
     git rev-parse --show-toplevel 2>/dev/null || true
@@ -123,13 +177,14 @@ main() {
   local bin_dir="$BIN_DIR_DEFAULT"
   local config_path=""
   local integrate_to=""
-  local print_window_env="1"
+  local window_env_mode="auto" # auto|always|never
   local no_config="0"
   local no_release="0"
   local tmp=""
   local release_tmp=""
 
   trap '[[ -n "${tmp:-}" ]] && rm -rf "${tmp}" >/dev/null 2>&1 || true; [[ -n "${release_tmp:-}" ]] && rm -rf "${release_tmp}" >/dev/null 2>&1 || true' EXIT
+  init_colors
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -154,15 +209,15 @@ main() {
         shift 2
         ;;
       --hooks)
-        print_window_env="1"
+        window_env_mode="always"
         shift
         ;;
       --window-env)
-        print_window_env="1"
+        window_env_mode="always"
         shift
         ;;
       --no-window-env)
-        print_window_env="0"
+        window_env_mode="never"
         shift
         ;;
       --no-config)
@@ -261,13 +316,43 @@ EOF
     "${bin_dir}/liquid-mail" integrate --to "$integrate_to"
   fi
 
-  if [[ "$print_window_env" == "1" ]]; then
-    say ""
-    say "Per-window env snippet (copy/paste into ~/.zshrc or ~/.bashrc):"
-    "${bin_dir}/liquid-mail" window env || "${bin_dir}/liquid-mail" hooks install || true
-    say ""
-    say "Optional:"
-    say "  export LIQUID_MAIL_NOTIFY_ON_START=1"
+  if [[ "$window_env_mode" != "never" ]]; then
+    local rc_files=()
+    local rc_file=""
+    while IFS= read -r rc_file; do
+      [[ -n "$rc_file" ]] || continue
+      rc_files+=("$rc_file")
+    done < <(window_env_rc_files)
+
+    local detected_in=""
+    if [[ "$window_env_mode" == "auto" ]]; then
+      detected_in="$(detect_window_env_file "${rc_files[@]}" 2>/dev/null || true)"
+    fi
+
+    if [[ -n "$detected_in" ]]; then
+      say ""
+      say "${C_DIM}Per-window env snippet detected in:${C_RESET} ${detected_in}"
+      say "${C_DIM}Tip:${C_RESET} Run: liquid-mail window env"
+    else
+      say ""
+      say "Per-window env snippet (copy/paste into one of these files):"
+      if [[ "${#rc_files[@]}" -gt 0 ]]; then
+        local f
+        for f in "${rc_files[@]}"; do
+          say "  - ${f}"
+        done
+      else
+        say "  - ~/.zshrc"
+        say "  - ~/.bashrc"
+      fi
+      say ""
+      say "${C_CYAN}----- BEGIN LIQUID MAIL WINDOW ENV -----${C_RESET}"
+      "${bin_dir}/liquid-mail" window env || "${bin_dir}/liquid-mail" hooks install || true
+      say "${C_CYAN}----- END LIQUID MAIL WINDOW ENV -----${C_RESET}"
+      say ""
+      say "Optional:"
+      say "  export LIQUID_MAIL_NOTIFY_ON_START=1"
+    fi
   fi
 
   say "Done."
