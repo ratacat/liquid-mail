@@ -5,43 +5,97 @@ export const OPENCODE_INSTRUCTIONS_RELATIVE_PATH = './.opencode/liquid-mail.md';
 
 // Keep this short, deterministic, and easy for agents to follow.
 export const LIQUID_MAIL_AGENT_SNIPPET = `
-## Liquid Mail
+## Integrating Liquid Mail with Beads
 
-Liquid Mail stores agent updates in Honcho sessions (topics).
+**Beads** manages task status, priority, and dependencies (\`br\` CLI).
+**Liquid Mail** provides the shared log—progress, decisions, and context that survives sessions.
 
-### Quick Start
+### Conventions
 
-1. Check for relevant updates: \`liquid-mail notify\`.
-2. Post an update (explicit topic is best): \`liquid-mail post --topic <id> "…"\`.
-3. If you don’t know the topic, omit \`--topic\` (auto-topic). If it errors, re-run with a suggested candidate topic.
-4. Before a major change, scan decisions: \`liquid-mail decisions --topic <id>\`.
-5. If a decision is blocked, re-run with \`--yes\` only if you intend to override.
+- **Single source of truth**: Beads owns task state; Liquid Mail owns conversation/decisions
+- **Shared identifiers**: Include the Beads issue ID in posts (e.g., \`[br-123] Refactoring auth module\`)
+- **Decisions before action**: Post \`DECISION:\` messages before risky changes, not after
 
-### Lifecycle Events (Recommended)
+### Typical Flow
 
-- On start: \`liquid-mail post --event start "START: …"\`
-- On finish: \`liquid-mail post --event finish "FINISH: …"\`
-- On bugs/issues: \`liquid-mail post --event issue "ISSUE: …"\`
-- On user feedback: \`liquid-mail post --event feedback "FEEDBACK: …"\`
+**1. Pick ready work (Beads)**
+\`\`\`bash
+br ready                    # Find available work (no blockers)
+br show br-123              # Review details
+br update br-123 --status in_progress
+\`\`\`
 
-### Window Identity (Recommended)
+**2. Check context (Liquid Mail)**
+\`\`\`bash
+liquid-mail notify          # See what changed since last session
+liquid-mail query "br-123"  # Find prior discussion on this issue
+\`\`\`
 
-Set a per-terminal window id (so concurrent swarms are distinguishable):
+**3. Work and log progress**
+\`\`\`bash
+liquid-mail post "[br-123] Analyzing the auth module structure"
+liquid-mail post "[br-123] FINDING: Token refresh happens in middleware, not service layer"
+\`\`\`
 
-- \`export LIQUID_MAIL_WINDOW_ID="lm..."\`
+**4. Decisions before risky changes**
+\`\`\`bash
+liquid-mail post --decision "[br-123] DECISION: Moving token refresh to AuthService because middleware can't access user context"
+# Then implement
+\`\`\`
 
-Liquid Mail will pin a topic per window id after the first post.
+**5. Complete (Beads is authority)**
+\`\`\`bash
+br close br-123             # Mark complete in Beads
+liquid-mail post "[br-123] Completed: Auth refactor merged in abc123"
+\`\`\`
 
-Print the recommended shell snippet:
+### Posting Format
 
-- \`liquid-mail window env\`
+- **Short** (5-15 lines, not walls of text)
+- **Prefixed** with ALL-CAPS tags: \`FINDING:\`, \`DECISION:\`, \`QUESTION:\`, \`NEXT:\`
+- **Include file paths** so others can jump in: \`src/services/auth.ts:42\`
+- **Include issue IDs** in brackets: \`[br-123]\`
 
-### Posting Format (Machine-Friendly)
+### Topics
 
-- Prefer 5-15 lines over walls of text.
-- Use explicit, ALL-CAPS prefixes:
-- \`DECISION:\` one clear decision per message (or pass \`--decision\`)
-- \`FINDING:\` evidence or surprising observation
-- \`QUESTION:\` what you need answered
-- \`NEXT:\` concrete next action
+Liquid Mail organizes messages into **topics** (Honcho sessions). Topics are **soft boundaries**—search spans all topics by default.
+
+- **Workspace-wide search**: \`liquid-mail query\` and \`notify\` search across all topics unless you filter with \`--topic\`
+- **Auto-topic**: If you omit \`--topic\` when posting, Liquid Mail finds a matching session based on content
+- **Explicit topic**: Use \`--topic <id>\` when you know which conversation stream you're in
+- **Window pinning**: Once a topic is assigned to your window, subsequent posts go there automatically
+- **List topics**: \`liquid-mail topics\` shows all sessions
+
+For beads-linked work, you can create a topic per issue:
+\`\`\`bash
+liquid-mail post --topic br-123 "[br-123] Starting work on auth refactor"
+# Subsequent posts in this window will use br-123 topic
+\`\`\`
+
+### Mapping Cheat-Sheet
+
+| Concept | In Beads | In Liquid Mail |
+|---------|----------|----------------|
+| Work item | \`br-123\` (issue ID) | \`--topic br-123\` |
+| Subject prefix | — | \`[br-123] ...\` |
+| Commit message | Include \`br-123\` | — |
+| Status | \`br update --status\` | Post progress messages |
+
+### Pitfalls
+
+- **Don't manage tasks in Liquid Mail**—Beads is the single task queue
+- **Always include \`br-xxx\`** in topic and subject to avoid ID drift across tools
+- **Don't dump logs**—keep posts short and structured
+
+### Quick Reference
+
+| Need | Command |
+|------|---------|
+| What changed? | \`liquid-mail notify\` |
+| Log progress | \`liquid-mail post "[br-xxx] ..."\` |
+| Before risky change | \`liquid-mail post --decision "[br-xxx] DECISION: ..."\` |
+| Find history | \`liquid-mail query "search term"\` |
+| Prior decisions | \`liquid-mail decisions\` |
+| Show config | \`liquid-mail config\` |
+| List topics | \`liquid-mail topics\` |
 `;
