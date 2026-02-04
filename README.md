@@ -66,11 +66,11 @@ Liquid Mail integrates with Beads (`br`) for task tracking. Add the snippet from
 
 **Quick workflow:**
 ```bash
-bd ready                           # Pick work (Beads)
+br ready                           # Pick work (Beads)
 liquid-mail notify                 # Check context
-liquid-mail post "[bd-123] ..."    # Log progress
+liquid-mail post "[br-123] ..."    # Log progress
 liquid-mail post --decision "..."  # Before risky changes
-bd close bd-123                    # Complete (Beads is authority)
+br close br-123                    # Complete (Beads is authority)
 ```
 
 **Roles:** Beads owns task state; Liquid Mail owns conversation/decisions.

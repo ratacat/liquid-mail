@@ -1035,7 +1035,7 @@ Every component includes specific success conditions to verify implementation is
 
 - Plan updated to v1.1 with the minimalism-focused simplifications above.
 - Bun/TypeScript CLI scaffold exists with unit tests for the dominance algorithm.
-- Issue tracking is initialized with **bd** (beads).
+- Issue tracking is initialized with **br** (beads).
 
 ## Next Steps (Tracked in Beads)
 
