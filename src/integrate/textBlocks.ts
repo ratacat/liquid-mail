@@ -1,17 +1,55 @@
-export function buildManagedBlock(start: string, body: string, end: string): string {
-  return [start, body.trim(), end].join('\n');
+export function buildManagedBlock(startMarker: string, body: string, end: string): string {
+  return [startMarker, body.trim(), end].join('\n');
+}
+
+/**
+ * Find the start of a managed block.
+ * Handles both versioned markers (<!-- BEGIN LIQUID MAIL (v:abc123) -->)
+ * and legacy/generic markers (<!-- BEGIN LIQUID MAIL --> or any custom start).
+ */
+function findBlockBoundaries(text: string, startHint: string, end: string): { startIndex: number; startEndIndex: number; endIndex: number } | undefined {
+  // For Liquid Mail blocks, try versioned marker first
+  if (startHint.includes('BEGIN LIQUID MAIL')) {
+    const versionedMatch = text.match(/<!-- BEGIN LIQUID MAIL \(v:[a-f0-9]+\) -->/);
+    if (versionedMatch) {
+      const startIndex = text.indexOf(versionedMatch[0]);
+      const startEndIndex = startIndex + versionedMatch[0].length;
+      const endIndex = text.indexOf(end, startEndIndex);
+      if (endIndex > startEndIndex) {
+        return { startIndex, startEndIndex, endIndex };
+      }
+    }
+  }
+
+  // Fall back to exact start marker match (legacy or generic)
+  const startIndex = text.indexOf(startHint);
+  if (startIndex === -1) return undefined;
+
+  const startEndIndex = startIndex + startHint.length;
+  const endIndex = text.indexOf(end, startEndIndex);
+  if (endIndex === -1 || endIndex <= startEndIndex) return undefined;
+
+  return { startIndex, startEndIndex, endIndex };
 }
 
 export function upsertManagedBlock(existing: string, block: string, start: string, end: string): string {
-  const startIndex = existing.indexOf(start);
-  const endIndex = existing.indexOf(end);
+  const boundaries = findBlockBoundaries(existing, start, end);
 
-  if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
-    const before = existing.slice(0, startIndex).trimEnd();
-    const after = existing.slice(endIndex + end.length).trimStart();
+  if (boundaries) {
+    const before = existing.slice(0, boundaries.startIndex).trimEnd();
+    const after = existing.slice(boundaries.endIndex + end.length).trimStart();
     return ([before, block, after].filter(Boolean).join('\n\n')).trimEnd() + '\n';
   }
 
   if (existing.trim().length === 0) return block.trimEnd() + '\n';
   return (existing.trimEnd() + '\n\n' + block).trimEnd() + '\n';
+}
+
+/**
+ * Extract the existing managed block content (without markers).
+ */
+export function extractManagedBlockContent(text: string, startHint: string, end: string): string | undefined {
+  const boundaries = findBlockBoundaries(text, startHint, end);
+  if (!boundaries) return undefined;
+  return text.slice(boundaries.startEndIndex, boundaries.endIndex).trim();
 }

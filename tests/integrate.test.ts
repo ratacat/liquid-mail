@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { integrateProject } from '../src/integrate/integrate';
-import { LIQUID_MAIL_AGENTS_BLOCK_END, LIQUID_MAIL_AGENTS_BLOCK_START } from '../src/integrate/snippets';
+import { LIQUID_MAIL_AGENTS_BLOCK_END, LIQUID_MAIL_AGENTS_BLOCK_START_PREFIX } from '../src/integrate/snippets';
 
 async function fileExists(path: string): Promise<boolean> {
   try {
@@ -25,7 +25,7 @@ describe('integrate --to claude', () => {
     expect(result.files[0]?.path).toBe(claudePath);
 
     const text = await readFile(claudePath, 'utf8');
-    expect(text).toContain(LIQUID_MAIL_AGENTS_BLOCK_START);
+    expect(text).toContain(LIQUID_MAIL_AGENTS_BLOCK_START_PREFIX);
     expect(text).toContain(LIQUID_MAIL_AGENTS_BLOCK_END);
 
     expect(await fileExists(join(dir, 'AGENTS.md'))).toBe(false);
@@ -40,7 +40,7 @@ describe('integrate --to claude', () => {
     expect(result.files[0]?.path).toBe(join(dir, 'AGENTS.md'));
 
     const claudeText = await readFile(claudePath, 'utf8');
-    expect(claudeText).not.toContain(LIQUID_MAIL_AGENTS_BLOCK_START);
+    expect(claudeText).not.toContain(LIQUID_MAIL_AGENTS_BLOCK_START_PREFIX);
   });
 
   it('falls back to AGENTS.md when CLAUDE.md is missing', async () => {
@@ -51,7 +51,7 @@ describe('integrate --to claude', () => {
     expect(result.files[0]?.path).toBe(agentsPath);
 
     const text = await readFile(agentsPath, 'utf8');
-    expect(text).toContain(LIQUID_MAIL_AGENTS_BLOCK_START);
+    expect(text).toContain(LIQUID_MAIL_AGENTS_BLOCK_START_PREFIX);
     expect(text).toContain(LIQUID_MAIL_AGENTS_BLOCK_END);
   });
 
@@ -76,7 +76,7 @@ describe('integrate runs at repo root', () => {
     expect(result.files[0]?.path).toBe(join(dir, 'AGENTS.md'));
 
     const text = await readFile(join(dir, 'AGENTS.md'), 'utf8');
-    expect(text).toContain(LIQUID_MAIL_AGENTS_BLOCK_START);
+    expect(text).toContain(LIQUID_MAIL_AGENTS_BLOCK_START_PREFIX);
     expect(text).toContain(LIQUID_MAIL_AGENTS_BLOCK_END);
     expect(await fileExists(join(dir, 'subdir', 'AGENTS.md'))).toBe(false);
   });

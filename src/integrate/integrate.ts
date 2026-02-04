@@ -6,8 +6,11 @@ import { LmError } from '../cli/errors';
 import { buildManagedBlock, upsertManagedBlock } from './textBlocks';
 import {
   LIQUID_MAIL_AGENTS_BLOCK_END,
-  LIQUID_MAIL_AGENTS_BLOCK_START,
+  buildBlockStart,
+  computeSnippetHash,
+  extractHashFromBlock,
   getAgentSnippet,
+  hasLiquidMailBlock as hasBlock,
   OPENCODE_INSTRUCTIONS_RELATIVE_PATH,
 } from './snippets';
 
@@ -58,10 +61,18 @@ async function integrateClaudeProject(cwd: string): Promise<IntegrateResult> {
 
 async function integrateManagedMarkdownFile(target: IntegrateTarget, filePath: string): Promise<IntegrateResult> {
   const snippet = getAgentSnippet();
-  const block = buildManagedBlock(LIQUID_MAIL_AGENTS_BLOCK_START, snippet, LIQUID_MAIL_AGENTS_BLOCK_END);
+  const hash = computeSnippetHash(snippet);
+  const blockStart = buildBlockStart(hash);
+  const block = buildManagedBlock(blockStart, snippet, LIQUID_MAIL_AGENTS_BLOCK_END);
   const existing = await readTextIfExists(filePath);
-  const next = upsertManagedBlock(existing, block, LIQUID_MAIL_AGENTS_BLOCK_START, LIQUID_MAIL_AGENTS_BLOCK_END);
 
+  // Check if existing block has same hash (already up to date)
+  const existingHash = extractHashFromBlock(existing);
+  if (existingHash === hash) {
+    return { target, files: [{ path: filePath, action: 'unchanged' }] };
+  }
+
+  const next = upsertManagedBlock(existing, block, blockStart, LIQUID_MAIL_AGENTS_BLOCK_END);
   const action = await writeTextIfChanged(filePath, existing, next);
   return { target, files: [{ path: filePath, action }] };
 }
@@ -190,7 +201,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function hasLiquidMailBlock(text: string): boolean {
-  return text.includes(LIQUID_MAIL_AGENTS_BLOCK_START) && text.includes(LIQUID_MAIL_AGENTS_BLOCK_END);
+  return hasBlock(text);
 }
 
 function looksLikeAgentsPointerClaudeMd(text: string): boolean {
