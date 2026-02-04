@@ -37,6 +37,16 @@ liquid-mail post --decision "[br-123] DECISION: Moving token refresh to AuthServ
 # Then implement
 ```
 
+### Decision Conflicts (Preflight)
+
+When you post a decision (via `--decision` or a `DECISION:` line), Liquid Mail can preflight-check for conflicts with prior decisions **in the same topic**.
+
+- If a conflict is detected, `liquid-mail post` fails with `DECISION_CONFLICT`.
+- Review prior decisions: `liquid-mail decisions --topic <topic-id>`.
+- If you intend to supersede the old decision, re-run with `--yes` and include a note about what changed and why.
+
+This conflict layer is enforced by the Liquid Mail CLI (it uses Honcho search + Honcho chat under the hood), not by Honcho “automatically”.
+
 **5. Complete (Beads is authority)**
 ```bash
 br close br-123             # Mark complete in Beads
