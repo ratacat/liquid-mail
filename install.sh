@@ -332,7 +332,6 @@ EOF
     if [[ -n "$detected_in" ]]; then
       say ""
       say "${C_DIM}Per-window env snippet detected in:${C_RESET} ${detected_in}"
-      say "${C_DIM}Tip:${C_RESET} Run: liquid-mail window env"
     else
       say ""
       say "Per-window env snippet (copy/paste into one of these files):"
