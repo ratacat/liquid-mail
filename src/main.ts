@@ -21,6 +21,7 @@ import { getPinnedTopicId, setPinnedTopicId } from './state/state';
 import { statePathForCwd } from './state/state';
 import { windowNameFromId } from './window/nameFromId';
 import { watchTopic } from './watch/watch';
+import { repoTopicIdForCwd } from './topics/repoTopic';
 
 function printHelpGlobal(): void {
   const text = [
@@ -67,7 +68,7 @@ function printHelpForCommand(command: string): void {
       '  liquid-mail watch [--topic <id>] [--interval <seconds>] [--tail <n>] [--notify] [--once]',
       '',
       'Flags:',
-      '  --topic       Session/topic id to watch (defaults to pinned topic for this window)',
+      '  --topic       Session/topic id to watch (defaults to pinned topic; else repo-name topic)',
       '  --interval    Poll interval seconds (default: 15)',
       '  --tail        Print last N messages once at start (default: 0)',
       '  --notify      Show OS notifications (macOS only)',
@@ -366,32 +367,13 @@ async function run(): Promise<void> {
       });
     }
 
-    const windowId = process.env.LIQUID_MAIL_WINDOW_ID;
-    if (!windowId) {
-      throw new LmError({
-        code: 'INVALID_INPUT',
-        message: 'Missing LIQUID_MAIL_WINDOW_ID (needed for watch state and pinned topic).',
-        exitCode: 2,
-        retryable: false,
-        suggestions: ['Add the window env snippet (liquid-mail window env)', 'Or run with --topic <SESSION_ID>'],
-      });
-    }
-
     let topicId = topicFlag;
-    if (!topicId) {
-      const pinned = await getPinnedTopicId(process.cwd(), windowId);
+    const envWindowId = process.env.LIQUID_MAIL_WINDOW_ID;
+    if (!topicId && envWindowId) {
+      const pinned = await getPinnedTopicId(process.cwd(), envWindowId);
       if (pinned) topicId = pinned;
     }
-
-    if (!topicId) {
-      throw new LmError({
-        code: 'TOPIC_REQUIRED',
-        message: 'Missing --topic and no pinned topic for this window yet.',
-        exitCode: 2,
-        retryable: false,
-        suggestions: ['Pass --topic <SESSION_ID>', 'Or run liquid-mail post once to pin a topic'],
-      });
-    }
+    if (!topicId) topicId = repoTopicIdForCwd(process.cwd());
 
     const { config } = await loadConfigResolved();
     const auth = requireHonchoAuth(config);
@@ -399,7 +381,7 @@ async function run(): Promise<void> {
 
     await watchTopic(client, {
       cwd: process.cwd(),
-      windowId,
+      windowId: envWindowId ?? `lmstateless${process.pid}`,
       topicId,
       intervalMs: Math.max(1, intervalSec) * 1000,
       once,
@@ -538,31 +520,20 @@ async function run(): Promise<void> {
     }
 
     if (!resolvedTopicId) {
+      // Prefer an existing topic match, but do not auto-create random topics.
+      // If no match, fall back to a repo-scoped default topic id.
       topicDecision = await resolveTopicForMessage({
         client,
         message,
-        config: config.topics,
+        config: { ...config.topics, autoCreate: false },
         titleHint: message.slice(0, 80),
         systemPeerId: config.decisions.systemPeerId,
       });
 
       if (topicDecision.action === 'assigned') {
         resolvedTopicId = topicDecision.chosenTopicId;
-      } else if (topicDecision.action === 'created' || topicDecision.action === 'merged') {
-        resolvedTopicId = topicDecision.createdTopicId;
       } else {
-        const errorCode = topicDecision.action === 'blocked' ? 'TOPIC_LIMIT_REACHED' : 'TOPIC_REQUIRED';
-        throw new LmError({
-          code: errorCode,
-          message:
-            topicDecision.action === 'blocked'
-              ? 'Topic cap reached; cannot auto-create new topic.'
-              : 'No --topic provided and auto-topic was inconclusive.',
-          exitCode: 2,
-          retryable: false,
-          suggestions: ['Re-run with --topic <SESSION_ID>', 'Adjust topics.auto_create or topics.max_active'],
-          details: { topicDecision },
-        });
+        resolvedTopicId = repoTopicIdForCwd(process.cwd());
       }
     }
 

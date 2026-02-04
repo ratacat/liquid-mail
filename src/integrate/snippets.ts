@@ -167,8 +167,10 @@ Commands:
 
 - **List topics**: \`liquid-mail topics\`
 - **Find an existing stream**: \`liquid-mail query "auth"\` then reuse that topic id
-- **Auto-topic**: if you omit \`--topic\`, Liquid Mail attempts to find a matching session based on content
+- **Auto-topic**: if you omit \`--topic\`, Liquid Mail attempts to find a matching existing topic based on content
 - **Window pinning**: once a topic is assigned to your window, subsequent posts go there automatically
+- **Default topic**: if there’s no match and no pinned topic yet, Liquid Mail falls back to a topic derived from the repo name
+- **Create topics explicitly**: pick a durable component slug and use \`--topic <slug>\` to start a new stream
 
 Examples (component topic + Beads id in the subject):
 \`\`\`bash

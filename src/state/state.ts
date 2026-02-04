@@ -78,7 +78,7 @@ function isStateV1(value: unknown): value is LiquidMailStateV1 {
   return true;
 }
 
-function findGitRoot(startDir: string): string | undefined {
+export function findGitRoot(startDir: string): string | undefined {
   let current = startDir;
   const root = parse(current).root;
 
