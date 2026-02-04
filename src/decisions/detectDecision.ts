@@ -48,7 +48,7 @@ function extractDecisionMarkers(message: string): string[] {
   const matches: string[] = [];
 
   for (const line of lines) {
-    const match = line.match(/^\s*DECISION:\s*(.+)$/);
+    const match = line.match(/^\s*DECISION:\s*(.+)$/i);
     if (match?.[1]) matches.push(match[1].trim());
   }
 

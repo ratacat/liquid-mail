@@ -5,18 +5,19 @@ If a command errors, run `liquid-mail --help` to see what's available in your in
 ## 50-Token Quick Start
 
 1. Start work by checking for relevant updates: `liquid-mail notify --agent-id <you>`.
-2. Post important progress + decisions: `liquid-mail post "…" --agent-id <you>`.
-3. If you're about to decide something, scan prior decisions first: `liquid-mail decisions --topic <id>`.
+2. Post progress: `liquid-mail post --agent-id <you> "…"`.
+3. If you’re making a decision, include `DECISION:` and pass `--decision`.
+4. Before a major decision, scan prior decisions: `liquid-mail decisions --topic <id>`.
 
 ## Posting Guide (100 Tokens)
 
 - Post **small, structured** messages. Prefer 5-15 lines over walls of text.
-- Use explicit prefixes so tools can extract artifacts reliably.
+- Use explicit, ALL-CAPS prefixes so tools can extract artifacts reliably.
 - Prefixes:
-- `Decision:` one clear decision per message
-- `Finding:` evidence or surprising observation
-- `Question:` what you need answered
-- `Next:` concrete next action
+- `DECISION:` one clear decision per message (or pass `--decision`)
+- `FINDING:` evidence or surprising observation
+- `QUESTION:` what you need answered
+- `NEXT:` concrete next action
 - Include file paths and issue IDs (if any) so others can jump in fast.
 
 ## Before You Start Work (150 Tokens)
@@ -25,7 +26,7 @@ If a command errors, run `liquid-mail --help` to see what's available in your in
 2. If you have a candidate topic, skim:
    - `liquid-mail summarize --topic <id>`
    - `liquid-mail decisions --topic <id>`
-3. If you're making a risky change, post a `Decision:` message before you implement, then post the outcome after.
+3. If you're making a risky change, post a `DECISION:` message before you implement, then post the outcome after.
 
 ## Full Reference (500 Tokens)
 
@@ -36,9 +37,15 @@ Core workflow:
 - `liquid-mail summarize` shows Honcho session summaries.
 
 Decision hygiene:
-- Keep decisions explicit. Prefer: `Decision: We will … because …`.
+- Keep decisions explicit. Prefer: `DECISION: We will … because …`.
+- For major decisions, pass `--decision` (enables conflict preflight + decision indexing).
 - If a new decision contradicts an old one, Liquid Mail can block and ask for confirmation (`--yes`).
 - Decisions are stored as normal messages with metadata (system peer).
+
+Topic selection:
+- Prefer explicit `--topic <id>` when you know it.
+- If you omit `--topic`, Liquid Mail auto-topics based on workspace search dominance.
+- If auto-topic is inconclusive, it returns candidate topics so you can re-run with `--topic`.
 
 Throughput tips (swarms):
 - Keep posts short and frequent; avoid dumping logs.

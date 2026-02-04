@@ -7,21 +7,22 @@ export const OPENCODE_INSTRUCTIONS_RELATIVE_PATH = './.opencode/liquid-mail.md';
 export const LIQUID_MAIL_AGENT_SNIPPET = `
 ## Liquid Mail
 
-If a command errors, run \`liquid-mail --help\`.
+Liquid Mail stores agent updates in Honcho sessions (topics).
 
 ### Quick Start
 
-1. Start work by checking for relevant updates: \`liquid-mail notify --agent-id <you>\`.
-2. Post progress + decisions: \`liquid-mail post "…" --agent-id <you>\`.
-3. Before a major decision, scan prior decisions: \`liquid-mail decisions --topic <id>\`.
+1. Check for relevant updates: \`liquid-mail notify --agent-id <you>\`.
+2. Post an update (explicit topic is best): \`liquid-mail post --topic <id> --agent-id <you> "…"\`.
+3. If you don’t know the topic, omit \`--topic\` (auto-topic). If it errors, re-run with a suggested candidate topic.
+4. Before a major change, scan decisions: \`liquid-mail decisions --topic <id>\`.
+5. If a decision is blocked, re-run with \`--yes\` only if you intend to override.
 
-### Posting Format
+### Posting Format (Machine-Friendly)
 
 - Prefer 5-15 lines over walls of text.
-- Use explicit prefixes:
-- \`Decision:\` one clear decision per message
-- \`Finding:\` evidence or surprising observation
-- \`Question:\` what you need answered
-- \`Next:\` concrete next action
+- Use explicit, ALL-CAPS prefixes:
+- \`DECISION:\` one clear decision per message (or pass \`--decision\`)
+- \`FINDING:\` evidence or surprising observation
+- \`QUESTION:\` what you need answered
+- \`NEXT:\` concrete next action
 `;
-
