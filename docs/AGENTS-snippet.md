@@ -6,35 +6,70 @@
 ### Conventions
 
 - **Single source of truth**: Beads owns task state; Liquid Mail owns conversation/decisions
-- **Shared identifiers**: Include the Beads issue ID in posts (e.g., `[br-123] Refactoring auth module`)
-- **Decisions before action**: Post `DECISION:` messages before risky changes, not after
+- **Shared identifiers**: Include the Beads issue ID in posts (e.g., `[lm-jht] Topic validation rules`)
+- **Soft locks (beads + files)**: When you start work, post a lock message with an expiry (“please respect the lock”)
+- **Check for locks before you start**: Before claiming a bead or editing files, scan for active locks; if unclear/expired, ask or proceed
 - **Identity in user updates**: In every user-facing reply, include your window-name (derived from `LIQUID_MAIL_WINDOW_ID`) so humans can distinguish concurrent agents.
 
 ### Typical Flow
 
+**0. Check for locks (Liquid Mail)**
+```bash
+liquid-mail notify
+liquid-mail query "LOCK:"
+liquid-mail query "lm-jht LOCK"
+```
+
 **1. Pick ready work (Beads)**
 ```bash
-br ready                    # Find available work (no blockers)
-br show br-123              # Review details
-br update br-123 --status in_progress
+br ready
+br show lm-jht
+br update lm-jht --status in_progress
 ```
 
-**2. Check context (Liquid Mail)**
+**2. Lock the bead + expected files (Liquid Mail)**
+
+Use a durable component topic (pins your window after the first post).
 ```bash
-liquid-mail notify          # See what changed since last session
-liquid-mail query "br-123"  # Find prior discussion on this issue
+liquid-mail post --topic auth-system "[lm-jht] LOCK: bead=lm-jht files=src/topics/validate.ts tests/topicValidate.test.ts ttl=60m until=<ISO8601> agent=$(liquid-mail window name)"
 ```
 
-**3. Work and log progress**
+If you need more time, renew the lock:
 ```bash
-liquid-mail post "[br-123] Analyzing the auth module structure"
-liquid-mail post "[br-123] FINDING: Token refresh happens in middleware, not service layer"
+liquid-mail post "[lm-jht] LOCK: EXTEND ttl=60m until=<ISO8601>"
 ```
 
-**4. Decisions before risky changes**
+When done, release:
 ```bash
-liquid-mail post --decision "[br-123] DECISION: Moving token refresh to AuthService because middleware can't access user context"
-# Then implement
+liquid-mail post "[lm-jht] UNLOCK: bead=lm-jht files=src/topics/validate.ts tests/topicValidate.test.ts"
+```
+
+Lock etiquette:
+- If a lock is active and you need the same files: post a short `QUESTION:` asking to coordinate.
+- If the lock expiry is > ~60m old: it’s okay to proceed, but leave a note that you’re taking over.
+
+**3. Check context (Liquid Mail)**
+```bash
+liquid-mail notify
+liquid-mail query "lm-jht"
+liquid-mail topics
+```
+
+**4. Work and log progress (topic required)**
+
+After the first `--topic` post pins the window, you can omit `--topic` as long as the window is pinned.
+```bash
+liquid-mail post --topic auth-system "[lm-jht] START: Reviewing current topic id patterns"
+liquid-mail post             "[lm-jht] FINDING: IDs like lm3189... are being used as topic names"
+liquid-mail post             "[lm-jht] NEXT: Add validation + rename guidance"
+```
+
+### Discuss Decisions (Same Decision Space)
+
+If you’re about to change something that affects shared behavior in a topic/system, discuss it in that same topic first (so others see it), then implement.
+
+```bash
+liquid-mail post --decision "[lm-jht] DECISION: Reject UUID-like topic names; require slugs"
 ```
 
 ### Decision Conflicts (Preflight)
@@ -42,28 +77,32 @@ liquid-mail post --decision "[br-123] DECISION: Moving token refresh to AuthServ
 When you post a decision (via `--decision` or a `DECISION:` line), Liquid Mail can preflight-check for conflicts with prior decisions **in the same topic**.
 
 - If a conflict is detected, `liquid-mail post` fails with `DECISION_CONFLICT`.
-- Review prior decisions: `liquid-mail decisions --topic <topic-id>`.
-- If you intend to supersede the old decision, re-run with `--yes` and include a note about what changed and why.
+- Review prior decisions: `liquid-mail decisions --topic <topic>`.
+- If you intend to supersede the old decision, re-run with `--yes` and include what changed and why.
 
-This conflict layer is enforced by the Liquid Mail CLI (it uses Honcho search + Honcho chat under the hood), not by Honcho “automatically”.
+This conflict layer is enforced by the Liquid Mail CLI (Honcho search + chat), not by Honcho “automatically”.
 
 **5. Complete (Beads is authority)**
 ```bash
-br close br-123             # Mark complete in Beads
-liquid-mail post "[br-123] Completed: Auth refactor merged in abc123"
+br close lm-jht
+liquid-mail post "[lm-jht] Completed: Topic validation shipped in 177267d"
 ```
 
 ### Posting Format
 
 - **Short** (5-15 lines, not walls of text)
-- **Prefixed** with ALL-CAPS tags: `FINDING:`, `DECISION:`, `QUESTION:`, `NEXT:`
+- **Prefixed** with ALL-CAPS tags: `LOCK:`, `UNLOCK:`, `FINDING:`, `DECISION:`, `QUESTION:`, `NEXT:`
 - **Include file paths** so others can jump in: `src/services/auth.ts:42`
-- **Include issue IDs** in brackets: `[br-123]`
+- **Include issue IDs** in brackets: `[lm-jht]`
 - **User-facing replies**: include `AGENT: <window-name>` near the top. Get it with `liquid-mail window name`.
 
-### Topics
+### Topics (Required)
 
 Liquid Mail organizes messages into **topics** (Honcho sessions). Topics are **soft boundaries**—search spans all topics by default.
+
+**Rule:** `liquid-mail post` requires a topic:
+- Provide `--topic <name>`, OR
+- Post inside a window that already has a pinned topic.
 
 Topic workflow (recommended):
 
@@ -77,71 +116,70 @@ Guidelines:
 - **Right-sized breadth**: broad enough for adjacent work by other agents, narrow enough to stay searchable.
 - **Valid IDs**: use slugs like `auth-system`, `db-system`, `dashboards` (avoid spaces/punctuation).
 
+Topic names must be:
+- 4–50 characters
+- lowercase letters/numbers with hyphens
+- start with a letter, end with a letter/number
+- no consecutive hyphens
+- not reserved (`all`, `new`, `help`, `merge`, `rename`, `list`)
+- not UUID-like (`lm<32-hex>` or standard UUIDs)
+
+Good examples:
+- `auth-system`, `db-system`, `dashboards`
+
 Commands:
 
-- **List topics**: `liquid-mail topics`
-- **Find an existing stream**: `liquid-mail query "auth"` then reuse that topic id
-- **Window pinning**: once a topic is assigned to your window, subsequent posts go there automatically
-- **Create topics explicitly**: pick a durable component slug and use `--topic <slug>` to start a new stream
-- **Rename a topic**: `liquid-mail topic rename <old-name> <new-name>` (creates an alias)
-- **Merge topics**: `liquid-mail topic merge <A> <B> --into <C>` (creates new topic C, redirects A and B)
-
-**Important**: The `--topic` flag is required for your first post. Topic names must be 4-50 characters, lowercase letters/numbers/hyphens only (e.g., `auth-system`, `db-migrations`). Legacy UUID-style names are not allowed.
+- **List topics (newest first)**: `liquid-mail topics`
+- **Find context across topics**: `liquid-mail query "auth"`, then pick a topic name
+- **Rename a topic (alias)**: `liquid-mail topic rename <old> <new>`
+- **Merge two topics into a new one**: `liquid-mail topic merge <A> <B> --into <C>`
 
 Examples (component topic + Beads id in the subject):
 ```bash
-liquid-mail post --topic auth-system "[br-123] START: Investigating token refresh failures"
-liquid-mail post --topic auth-system "[br-123] FINDING: refresh happens in middleware, not service layer"
-liquid-mail post --topic auth-system --decision "[br-123] DECISION: Move refresh logic into AuthService"
+liquid-mail post --topic auth-system "[lm-jht] START: Investigating token refresh failures"
+liquid-mail post --topic auth-system "[lm-jht] FINDING: refresh happens in middleware, not service layer"
+liquid-mail post --topic auth-system --decision "[lm-jht] DECISION: Move refresh logic into AuthService"
 
-liquid-mail post --topic dashboards "[br-456] START: Adding latency panel"
+liquid-mail post --topic dashboards "[lm-1p5] START: Adding latency panel"
 ```
 
-### Context Refresh (Before New Work / After “Compaction”)
+### Context Refresh (Before New Work / After Redirects)
 
-If you’re about to start a new chunk of work, or you see messages like “merged into …”, “redirect”, or big new summaries, refresh context before acting:
-
+If you see redirect/merge messages, refresh context before acting:
 ```bash
 liquid-mail notify
 liquid-mail window status --json
-liquid-mail summarize --topic <topic-id>
-liquid-mail decisions --topic <topic-id>
+liquid-mail summarize --topic <topic>
+liquid-mail decisions --topic <topic>
 ```
 
 If you discover a newer “canonical” topic (for example after a topic merge), switch to it explicitly and let window pinning follow:
-
 ```bash
-liquid-mail post --topic <new-topic-id> "[br-123] CONTEXT: Switching topics (merge/redirect)"
+liquid-mail post --topic <new-topic> "[lm-xxxx] CONTEXT: Switching topics (rename/merge)"
 ```
 
-### Live Updates (Optional “Push”)
+### Live Updates (Polling)
 
 Liquid Mail is pull-based by default (you run `notify`). If you want near-real-time updates in a dedicated terminal pane, use watch-mode (polling):
-
 ```bash
-liquid-mail watch --topic <topic-id>   # Watch a topic
-liquid-mail watch                      # Or watch your pinned topic
+liquid-mail watch --topic <topic>   # watch a topic
+liquid-mail watch                  # or watch your pinned topic
 ```
 
 ### Mapping Cheat-Sheet
 
 | Concept | In Beads | In Liquid Mail |
 |---------|----------|----------------|
-| Work item | `br-123` (issue ID) | Include `[br-123]` in posts |
+| Work item | `lm-jht` (issue ID) | Include `[lm-jht]` in posts |
 | Workstream | — | `--topic auth-system` |
-| Subject prefix | — | `[br-123] ...` |
-| Commit message | Include `br-123` | — |
+| Subject prefix | — | `[lm-jht] ...` |
+| Commit message | Include `lm-jht` | — |
 | Status | `br update --status` | Post progress messages |
-
-### Event Mirroring (Optional Automation)
-
-- **On `br update --status blocked`**: Post a high-importance message describing the blocker
-- **On decision conflict/overdue ack**: Add a Beads label (`needs-ack`) or bump priority to surface in `br ready`
 
 ### Pitfalls
 
 - **Don't manage tasks in Liquid Mail**—Beads is the single task queue
-- **Always include `br-xxx`** in topic and subject to avoid ID drift across tools
+- **Always include `lm-xxx`** in posts to avoid ID drift across tools
 - **Don't dump logs**—keep posts short and structured
 
 ### Quick Reference
@@ -149,9 +187,15 @@ liquid-mail watch                      # Or watch your pinned topic
 | Need | Command |
 |------|---------|
 | What changed? | `liquid-mail notify` |
-| Log progress | `liquid-mail post "[br-xxx] ..."` |
-| Before risky change | `liquid-mail post --decision "[br-xxx] DECISION: ..."` |
+| Check locks | `liquid-mail query "LOCK:"` |
+| Lock bead/files | `liquid-mail post --topic <topic> "[lm-xxx] LOCK: bead=... files=... ttl=60m until=... agent=..."` |
+| Log progress | `liquid-mail post "[lm-xxx] ..."` |
+| Discuss decisions (same decision space) | `liquid-mail post --decision "[lm-xxx] DECISION: ..."` |
 | Find history | `liquid-mail query "search term"` |
-| Prior decisions | `liquid-mail decisions` |
+| Prior decisions | `liquid-mail decisions --topic <topic>` |
 | Show config | `liquid-mail config` |
 | List topics | `liquid-mail topics` |
+| Rename topic | `liquid-mail topic rename <old> <new>` |
+| Merge topics | `liquid-mail topic merge <A> <B> --into <C>` |
+| Polling watch | `liquid-mail watch [--topic <topic>]` |
+
