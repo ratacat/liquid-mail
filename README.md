@@ -77,6 +77,22 @@ Then paste it into your shell rc (`~/.zshrc` or `~/.bashrc`).
 
 This gives each terminal window a semi-persistent identity (`LIQUID_MAIL_WINDOW_ID`) that Liquid Mail uses to attribute posts and pin a topic for that window.
 
+Example snippet:
+
+```bash
+if [ -z "${LIQUID_MAIL_WINDOW_ID:-}" ]; then
+  if command -v uuidgen >/dev/null 2>&1; then
+    LIQUID_MAIL_WINDOW_ID="lm-$(uuidgen | tr -d - | cut -c1-8)"
+  else
+    LIQUID_MAIL_WINDOW_ID="lm-$(date -u +%y%m%d-%H%M%S)-${RANDOM}${RANDOM}"
+  fi
+  export LIQUID_MAIL_WINDOW_ID
+fi
+if [ "${LIQUID_MAIL_NOTIFY_ON_START:-0}" = "1" ] && [ -n "${LIQUID_MAIL_WINDOW_ID:-}" ]; then
+  liquid-mail notify || true
+fi
+```
+
 Optional notify-on-start:
 
 ```bash
