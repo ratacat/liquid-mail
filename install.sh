@@ -298,8 +298,8 @@ main() {
 #   LIQUID_MAIL_HONCHO_WORKSPACE_ID
 #
 [honcho]
-api_key = "hc_..."
-workspace_id = "ws_..."
+api_key = "hc_your_api_key"
+workspace_id = "ws_your_workspace_id"
 base_url = "https://api.honcho.dev"
 EOF
       say "Wrote config template: ${config_path}"

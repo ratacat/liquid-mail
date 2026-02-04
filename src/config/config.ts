@@ -5,6 +5,8 @@ import { dirname, join, parse } from 'node:path';
 
 import { LmError } from '../cli/errors';
 
+import { parse as parseToml } from 'smol-toml';
+
 export type LiquidMailConfig = {
   honcho: {
     baseUrl: string;
@@ -198,7 +200,7 @@ function applyEnvOverrides(config: LiquidMailConfig): LiquidMailConfig {
 async function readTomlIfExists(path: string): Promise<unknown> {
   try {
     const text = await readFile(path, 'utf8');
-    return (globalThis as any).Bun?.TOML?.parse(text) ?? {};
+    return parseToml(text);
   } catch (err: any) {
     if (err && typeof err === 'object' && err.code === 'ENOENT') return {};
     throw err;
@@ -216,7 +218,7 @@ export async function loadConfig(opts?: LoadConfigOpts): Promise<{ config: Liqui
 
 export function requireHonchoAuth(config: LiquidMailConfig): { apiKey: string; workspaceId: string; baseUrl: string } {
   const { apiKey, workspaceId, baseUrl } = config.honcho;
-  if (!apiKey || !workspaceId) {
+  if (!apiKey || !workspaceId || looksLikePlaceholder(apiKey) || looksLikePlaceholder(workspaceId)) {
     throw new LmError({
       code: 'MISSING_CONFIG',
       message: 'Missing Honcho configuration (apiKey/workspaceId).',
@@ -231,4 +233,13 @@ export function requireHonchoAuth(config: LiquidMailConfig): { apiKey: string; w
     });
   }
   return { apiKey, workspaceId, baseUrl };
+}
+
+function looksLikePlaceholder(value: string): boolean {
+  const v = value.trim();
+  if (!v) return true;
+  if (v.includes('...')) return true;
+  if (v === 'hc_your_api_key' || v === 'ws_your_workspace_id') return true;
+  if (v === 'hc_...' || v === 'ws_...') return true;
+  return false;
 }

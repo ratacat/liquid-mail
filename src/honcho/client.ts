@@ -17,13 +17,17 @@ export class HonchoClient {
   public readonly workspaceId: string;
 
   public constructor(opts: HonchoClientOpts) {
-    this.honcho = new Honcho({
-      apiKey: opts.apiKey,
-      baseURL: opts.baseUrl,
-      workspaceId: opts.workspaceId,
-      maxRetries: opts.maxRetries,
-      timeout: opts.timeoutMs,
-    });
+    try {
+      this.honcho = new Honcho({
+        apiKey: opts.apiKey,
+        baseURL: opts.baseUrl,
+        workspaceId: opts.workspaceId,
+        maxRetries: opts.maxRetries,
+        timeout: opts.timeoutMs,
+      });
+    } catch (err) {
+      throw mapHonchoSdkConfigError(err);
+    }
     this.workspaceId = this.honcho.workspaceId;
   }
 
@@ -121,4 +125,41 @@ function mapHonchoSdkError(err: unknown): LmError {
     suggestions: ['Retry the command', 'Inspect network connectivity'],
     details: err instanceof Error ? err.message : err,
   });
+}
+
+function mapHonchoSdkConfigError(err: unknown): LmError {
+  if (isZodIssueArrayError(err)) {
+    return new LmError({
+      code: 'INVALID_CONFIG',
+      message: 'Invalid Honcho configuration.',
+      exitCode: 2,
+      retryable: false,
+      suggestions: [
+        'Fix LIQUID_MAIL_HONCHO_API_KEY / LIQUID_MAIL_HONCHO_WORKSPACE_ID',
+        'Or fix [honcho] api_key / workspace_id in your .liquid-mail.toml',
+      ],
+      details: err.issues,
+    });
+  }
+
+  return new LmError({
+    code: 'INVALID_CONFIG',
+    message: 'Invalid Honcho configuration.',
+    exitCode: 2,
+    retryable: false,
+    suggestions: [
+      'Fix LIQUID_MAIL_HONCHO_API_KEY / LIQUID_MAIL_HONCHO_WORKSPACE_ID',
+      'Or fix [honcho] api_key / workspace_id in your .liquid-mail.toml',
+    ],
+    details: err instanceof Error ? err.message : err,
+  });
+}
+
+function isZodIssueArrayError(
+  value: unknown,
+): value is { issues: Array<{ path?: Array<string | number>; message?: string; code?: string }> } {
+  if (!value || typeof value !== 'object') return false;
+  const record = value as Record<string, unknown>;
+  const issues = record['issues'];
+  return Array.isArray(issues);
 }

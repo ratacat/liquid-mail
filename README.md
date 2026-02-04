@@ -32,15 +32,15 @@ If the snippet is already detected in your shell rc, the installer will skip pri
 Secrets via env vars:
 
 ```bash
-export LIQUID_MAIL_HONCHO_API_KEY="hc_..."
-export LIQUID_MAIL_HONCHO_WORKSPACE_ID="ws_..."
+export LIQUID_MAIL_HONCHO_API_KEY="hc_your_api_key"
+export LIQUID_MAIL_HONCHO_WORKSPACE_ID="ws_your_workspace_id"
 ```
 
 Config file (recommended):
 
 ```toml
 [honcho]
-workspace_id = "ws_..."
+workspace_id = "ws_your_workspace_id"
 base_url = "https://api.honcho.dev"
 ```
 
@@ -58,11 +58,11 @@ Liquid Mail integrates with Beads (`br`) for task tracking. Add the snippet from
 
 **Quick workflow:**
 ```bash
-br ready                           # Pick work (Beads)
+bd ready                           # Pick work (Beads)
 liquid-mail notify                 # Check context
-liquid-mail post "[br-123] ..."    # Log progress
+liquid-mail post "[bd-123] ..."    # Log progress
 liquid-mail post --decision "..."  # Before risky changes
-br close br-123                    # Complete (Beads is authority)
+bd close bd-123                    # Complete (Beads is authority)
 ```
 
 **Roles:** Beads owns task state; Liquid Mail owns conversation/decisions.
