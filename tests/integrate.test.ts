@@ -107,4 +107,27 @@ describe('integrate managed block updates', () => {
     const content = extractManagedBlockContent(updatedText, LIQUID_MAIL_AGENTS_BLOCK_START_PREFIX, LIQUID_MAIL_AGENTS_BLOCK_END);
     expect(content).toBe(snippet.trim());
   });
+
+  it('dedupes multiple Liquid Mail blocks into a single managed block', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'liquid-mail-integrate-'));
+
+    const snippet = getAgentSnippet();
+    const hash = computeSnippetHash(snippet);
+    const start = buildBlockStart(hash);
+
+    const agentsPath = join(dir, 'AGENTS.md');
+    const legacyBlock = ['<!-- BEGIN LIQUID MAIL -->', 'LEGACY', LIQUID_MAIL_AGENTS_BLOCK_END].join('\n');
+    const versionedBlock = [start, 'VERSIONED', LIQUID_MAIL_AGENTS_BLOCK_END].join('\n');
+    await writeFile(agentsPath, `# Title\n\n${legacyBlock}\n\nBetween\n\n${versionedBlock}\n`, 'utf8');
+
+    const result = await integrateProject({ cwd: dir, target: 'codex' });
+    expect(result.files[0]?.action).toBe('updated');
+
+    const updatedText = await readFile(agentsPath, 'utf8');
+    expect(updatedText.match(new RegExp(LIQUID_MAIL_AGENTS_BLOCK_START_PREFIX, 'g'))?.length).toBe(1);
+    expect(updatedText.match(new RegExp(LIQUID_MAIL_AGENTS_BLOCK_END, 'g'))?.length).toBe(1);
+
+    const content = extractManagedBlockContent(updatedText, LIQUID_MAIL_AGENTS_BLOCK_START_PREFIX, LIQUID_MAIL_AGENTS_BLOCK_END);
+    expect(content).toBe(snippet.trim());
+  });
 });
