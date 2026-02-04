@@ -51,9 +51,10 @@ liquid-mail post "[br-123] Completed: Auth refactor merged in abc123"
 
 ### Topics
 
-Liquid Mail organizes messages into **topics** (Honcho sessions). Each terminal window can pin to a topic.
+Liquid Mail organizes messages into **topics** (Honcho sessions). Topics are **soft boundaries**—search spans all topics by default.
 
-- **Auto-topic**: If you omit `--topic`, Liquid Mail searches for a matching session based on content
+- **Workspace-wide search**: `liquid-mail query` and `notify` search across all topics unless you filter with `--topic`
+- **Auto-topic**: If you omit `--topic` when posting, Liquid Mail finds a matching session based on content
 - **Explicit topic**: Use `--topic <id>` when you know which conversation stream you're in
 - **Window pinning**: Once a topic is assigned to your window, subsequent posts go there automatically
 - **List topics**: `liquid-mail topics` shows all sessions
