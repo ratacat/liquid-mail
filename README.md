@@ -27,26 +27,6 @@ curl -fsSL https://raw.githubusercontent.com/ratacat/liquid-mail/main/install.sh
 This prints a per-window shell snippet (copy/paste). It does not modify shell files.
 If the snippet is already detected in your shell rc, the installer will skip printing it.
 
-Project-level host integration (run from your project root):
-
-```bash
-# Claude Code
-curl -fsSL https://raw.githubusercontent.com/ratacat/liquid-mail/main/install.sh | bash -s -- --integrate claude
-
-# Codex
-curl -fsSL https://raw.githubusercontent.com/ratacat/liquid-mail/main/install.sh | bash -s -- --integrate codex
-
-# OpenCode
-curl -fsSL https://raw.githubusercontent.com/ratacat/liquid-mail/main/install.sh | bash -s -- --integrate opencode
-```
-
-Verify:
-
-```bash
-liquid-mail --version
-liquid-mail config --json
-```
-
 ## Configure
 
 Secrets via env vars:
@@ -72,25 +52,11 @@ To force a config path:
 export LIQUID_MAIL_CONFIG="$PWD/.liquid-mail.toml"
 ```
 
-## Agent Snippet
-
-Copy/paste for a project's `AGENTS.md`:
-
-- `docs/AGENTS-snippet.md`
-
 ## Window Env
 
-Print the per-window env snippet:
+Liquid Mail works best when each terminal window has a semi-persistent identity (`LIQUID_MAIL_WINDOW_ID`) so concurrent swarms are distinguishable, and Liquid Mail can pin a topic per window.
 
-```bash
-liquid-mail window env
-```
-
-Then paste it into your shell rc (`~/.zshrc` or `~/.bashrc`).
-
-This gives each terminal window a semi-persistent identity (`LIQUID_MAIL_WINDOW_ID`) that Liquid Mail uses to attribute posts and pin a topic for that window.
-
-Example snippet:
+Add this snippet to your shell rc (`~/.zshrc` or `~/.bashrc`):
 
 ```bash
 # BEGIN LIQUID MAIL WINDOW ENV
@@ -114,10 +80,24 @@ Optional notify-on-start:
 export LIQUID_MAIL_NOTIFY_ON_START=1
 ```
 
-Sanity check:
+## Agent Instructions
+
+Add this snippet to your project’s agent instructions file (usually `AGENTS.md`, sometimes `CLAUDE.md`):
 
 ```bash
-liquid-mail window status --json
+## Liquid Mail
+
+Use Liquid Mail to log swarm lifecycle events, user feedback, issues, and decisions.
+
+1. Start by checking for relevant updates: `liquid-mail notify`.
+2. Post progress: `liquid-mail post "…"`.
+3. Post lifecycle events:
+   - Start: `liquid-mail post --event start "START: …"`
+   - Finish: `liquid-mail post --event finish "FINISH: …"`
+   - Bug/issue: `liquid-mail post --event issue "ISSUE: …"`
+   - User feedback: `liquid-mail post --event feedback "FEEDBACK: …"`
+4. For decisions, be explicit and pass `--decision`:
+   - `liquid-mail post --decision "DECISION: …"`
 ```
 
 ## Topic Pinning
@@ -133,18 +113,3 @@ Use `post` to log lifecycle events:
 - Bug/issue: `liquid-mail post --event issue "ISSUE: …"`
 - User feedback: `liquid-mail post --event feedback "FEEDBACK: …"`
 - Decision: `liquid-mail post --decision "DECISION: …"`
-
-## Development
-
-```bash
-bun install
-bun test
-bun run dev -- --help
-```
-
-## Build
-
-```bash
-bun run build
-./dist/liquid-mail --help
-```
