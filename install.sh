@@ -20,6 +20,7 @@ Options:
   --bin-dir <dir>          Install directory (default: ~/.local/bin)
   --config-path <path>     Config path (default: repo-root/.liquid-mail.toml or ~/.liquid-mail.toml)
   --integrate <target>     Project-level integration (claude|codex|opencode)
+  --hooks                  Print optional shell hook snippet (no shell files modified)
   --no-config              Do not create a config template
   --no-release             Skip release download attempt (build from source)
   -h, --help               Show help
@@ -121,6 +122,7 @@ main() {
   local bin_dir="$BIN_DIR_DEFAULT"
   local config_path=""
   local integrate_to=""
+  local print_hooks="0"
   local no_config="0"
   local no_release="0"
   local tmp=""
@@ -149,6 +151,10 @@ main() {
       --integrate)
         integrate_to="$2"
         shift 2
+        ;;
+      --hooks)
+        print_hooks="1"
+        shift
         ;;
       --no-config)
         no_config="1"
@@ -244,6 +250,16 @@ EOF
       *) die "Unknown --integrate target: ${integrate_to} (expected: claude|codex|opencode)" ;;
     esac
     "${bin_dir}/liquid-mail" integrate --to "$integrate_to"
+  fi
+
+  if [[ "$print_hooks" == "1" ]]; then
+    say ""
+    say "Optional shell hook (copy/paste into ~/.zshrc or ~/.bashrc):"
+    "${bin_dir}/liquid-mail" hooks install || true
+    say ""
+    say "Then set:"
+    say "  export LIQUID_MAIL_NOTIFY_ON_START=1"
+    say "  export LIQUID_MAIL_AGENT_ID=\"your-peer-id\""
   fi
 
   say "Done."

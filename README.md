@@ -27,6 +27,12 @@ curl -fsSL https://raw.githubusercontent.com/ratacat/liquid-mail/main/install.sh
 curl -fsSL https://raw.githubusercontent.com/ratacat/liquid-mail/main/install.sh | bash -s -- --integrate opencode
 ```
 
+Optional: also print the shell hook snippet during install:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ratacat/liquid-mail/main/install.sh | bash -s -- --hooks
+```
+
 Local install (dev):
 
 ```bash
