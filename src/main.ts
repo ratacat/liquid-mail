@@ -20,8 +20,9 @@ import { LIQUID_MAIL_VERSION } from './version';
 import { getPinnedTopicId, setPinnedTopicId } from './state/state';
 import { statePathForCwd } from './state/state';
 import { windowNameFromId } from './window/nameFromId';
+import { watchTopic } from './watch/watch';
 
-function printHelp(): void {
+function printHelpGlobal(): void {
   const text = [
     'liquid-mail',
     '',
@@ -32,6 +33,7 @@ function printHelp(): void {
     '  decisions   List/search decision messages (TBD)',
     '  topics      List Honcho sessions (TBD)',
     '  notify      Context-based notifications (TBD)',
+    '  watch       Watch a topic for new messages (polling)',
     '  window      Show window/topic state',
     '  integrate   Install project-level instructions (claude/codex/opencode)',
     '  schema      Print JSON schemas used by Liquid Mail',
@@ -51,6 +53,52 @@ function printHelp(): void {
     '  liquid-mail integrate --to claude',
   ];
   process.stdout.write(text.join('\n') + '\n');
+}
+
+function printHelpForCommand(command: string): void {
+  if (command === 'watch') {
+    const text = [
+      'liquid-mail watch',
+      '',
+      'Watches a single topic for new messages by polling Honcho.',
+      'This is the closest thing to “push notifications” in a local CLI.',
+      '',
+      'Usage:',
+      '  liquid-mail watch [--topic <id>] [--interval <seconds>] [--tail <n>] [--notify] [--once]',
+      '',
+      'Flags:',
+      '  --topic       Session/topic id to watch (defaults to pinned topic for this window)',
+      '  --interval    Poll interval seconds (default: 15)',
+      '  --tail        Print last N messages once at start (default: 0)',
+      '  --notify      Show OS notifications (macOS only)',
+      '  --once        Fetch once and exit (useful for scripts)',
+      '',
+      'Examples:',
+      '  liquid-mail watch --topic auth-system',
+      '  liquid-mail watch --notify',
+      '  liquid-mail watch --once --json',
+    ];
+    process.stdout.write(text.join('\n') + '\n');
+    return;
+  }
+
+  if (command === 'notify') {
+    const text = [
+      'liquid-mail notify',
+      '',
+      'Shows context-based notifications (mentions, decisions, events).',
+      '',
+      'Usage:',
+      '  liquid-mail notify [--agent-id <id>] [--since <iso8601>]',
+      '',
+      'Notes:',
+      '  If omitted, --agent-id defaults to LIQUID_MAIL_WINDOW_ID.',
+    ];
+    process.stdout.write(text.join('\n') + '\n');
+    return;
+  }
+
+  printHelpGlobal();
 }
 
 async function readAllStdin(): Promise<string> {
@@ -143,7 +191,11 @@ async function run(): Promise<void> {
   }
 
   if (flags.help === true || flags.h === true || !command) {
-    printHelp();
+    if (!command) {
+      printHelpGlobal();
+    } else {
+      printHelpForCommand(command);
+    }
     return;
   }
 
@@ -294,6 +346,70 @@ async function run(): Promise<void> {
 
     if (mode === 'json') printJson({ ok: true, data: { items } });
     else process.stdout.write(formatNotifyText(items));
+    return;
+  }
+
+  if (command === 'watch') {
+    const once = flags['once'] === true;
+    const notify = flags['notify'] === true;
+    const intervalSec = Number(getFlagString(flags, 'interval') ?? '15');
+    const tail = Number(getFlagString(flags, 'tail') ?? '0');
+    const topicFlag = getFlagString(flags, 'topic');
+
+    if (mode === 'json' && !once) {
+      throw new LmError({
+        code: 'INVALID_INPUT',
+        message: '--json is only supported with watch --once.',
+        exitCode: 2,
+        retryable: false,
+        suggestions: ['Re-run: liquid-mail watch --once --json', 'Or omit --json for streaming text output'],
+      });
+    }
+
+    const windowId = process.env.LIQUID_MAIL_WINDOW_ID;
+    if (!windowId) {
+      throw new LmError({
+        code: 'INVALID_INPUT',
+        message: 'Missing LIQUID_MAIL_WINDOW_ID (needed for watch state and pinned topic).',
+        exitCode: 2,
+        retryable: false,
+        suggestions: ['Add the window env snippet (liquid-mail window env)', 'Or run with --topic <SESSION_ID>'],
+      });
+    }
+
+    let topicId = topicFlag;
+    if (!topicId) {
+      const pinned = await getPinnedTopicId(process.cwd(), windowId);
+      if (pinned) topicId = pinned;
+    }
+
+    if (!topicId) {
+      throw new LmError({
+        code: 'TOPIC_REQUIRED',
+        message: 'Missing --topic and no pinned topic for this window yet.',
+        exitCode: 2,
+        retryable: false,
+        suggestions: ['Pass --topic <SESSION_ID>', 'Or run liquid-mail post once to pin a topic'],
+      });
+    }
+
+    const { config } = await loadConfigResolved();
+    const auth = requireHonchoAuth(config);
+    const client = new HonchoClient(auth);
+
+    await watchTopic(client, {
+      cwd: process.cwd(),
+      windowId,
+      topicId,
+      intervalMs: Math.max(1, intervalSec) * 1000,
+      once,
+      tail: Math.max(0, tail),
+      notify,
+      output: {
+        json: mode === 'json',
+        write: (text) => process.stdout.write(text),
+      },
+    });
     return;
   }
 

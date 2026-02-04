@@ -10,6 +10,16 @@ export type LiquidMailStateV1 = {
     {
       topic_id?: string;
       updated_at?: string;
+      watch?: {
+        topics?: Record<
+          string,
+          {
+            last_seen_at?: string;
+            last_seen_ids?: string[];
+            updated_at?: string;
+          }
+        >;
+      };
     }
   >;
 };

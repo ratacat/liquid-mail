@@ -99,3 +99,12 @@ fi
 ## Topic Pinning
 
 Liquid Mail pins a topic per `LIQUID_MAIL_WINDOW_ID` after the first `post` and stores it in `./.liquid-mail/state.json` (gitignored).
+
+## Live Updates (Optional “Push”)
+
+Liquid Mail is pull-based by default (you run `notify`). If you want near-real-time updates in a dedicated terminal pane, use watch-mode (polling):
+
+```bash
+liquid-mail watch --topic <topic-id>   # Watch a topic
+liquid-mail watch                      # Or watch your pinned topic
+```

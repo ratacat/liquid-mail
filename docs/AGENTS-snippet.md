@@ -110,6 +110,15 @@ If you discover a newer “canonical” topic (for example after a topic merge),
 liquid-mail post --topic <new-topic-id> "[br-123] CONTEXT: Switching topics (merge/redirect)"
 ```
 
+### Live Updates (Optional “Push”)
+
+Liquid Mail is pull-based by default (you run `notify`). If you want near-real-time updates in a dedicated terminal pane, use watch-mode (polling):
+
+```bash
+liquid-mail watch --topic <topic-id>   # Watch a topic
+liquid-mail watch                      # Or watch your pinned topic
+```
+
 ### Mapping Cheat-Sheet
 
 | Concept | In Beads | In Liquid Mail |

@@ -3,6 +3,7 @@ import type {
   HonchoChatResponse,
   HonchoMessageCreateRequest,
   HonchoMessageCreateResponse,
+  HonchoMessage,
   HonchoSearchRequest,
   HonchoSearchResponse,
   HonchoSessionGetOrCreateRequest,
@@ -103,6 +104,42 @@ export async function createMessage(
       created_at: message.createdAt,
       metadata: message.metadata as any,
     },
+  };
+}
+
+export async function listSessionMessages(
+  client: HonchoClient,
+  sessionId: string,
+  params: { since?: string; until?: string; limit?: number } = {},
+): Promise<{ messages: HonchoMessage[] }> {
+  const size = Math.min(Math.max(params.limit ?? 50, 1), 200);
+  const page = await client.honcho.http.post<{
+    items: Array<{
+      id: string;
+      content: string;
+      peer_id: string;
+      session_id: string;
+      created_at?: string;
+      metadata?: Record<string, any>;
+    }>;
+    page: number;
+    size: number;
+    total: number;
+    pages: number;
+  }>(`/v3/workspaces/${client.workspaceId}/sessions/${sessionId}/messages/list`, {
+    body: { filters: params.since || params.until ? { since: params.since, until: params.until } : undefined },
+    query: { page: 1, size },
+  });
+
+  return {
+    messages: (page.items ?? []).map((item) => ({
+      id: item.id,
+      session_id: item.session_id,
+      peer_id: item.peer_id,
+      content: item.content,
+      ...(item.created_at ? { created_at: item.created_at } : {}),
+      ...(item.metadata ? { metadata: item.metadata } : {}),
+    })),
   };
 }
 
