@@ -85,6 +85,15 @@ export async function listSessions(
   };
 }
 
+export async function sessionExists(client: HonchoClient, sessionId: string): Promise<boolean> {
+  const page = await client.honcho.http.post<{ items: any[] }>(`/v3/workspaces/${client.workspaceId}/sessions/list`, {
+    body: { filters: { session_ids: [sessionId] } },
+    query: { page: 1, size: 1 },
+  });
+
+  return (page.items ?? []).some((item) => item?.id === sessionId);
+}
+
 export async function createMessage(
   client: HonchoClient,
   sessionId: string,

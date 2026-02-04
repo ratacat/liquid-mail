@@ -74,6 +74,26 @@ export async function setPinnedTopicId(cwd: string, windowId: string, topicId: s
   await writeState(cwd, state);
 }
 
+export async function replacePinnedTopicId(cwd: string, fromTopicId: string, toTopicId: string): Promise<number> {
+  const state = await readState(cwd);
+  let updated = 0;
+
+  for (const windowId of Object.keys(state.windows)) {
+    const win = state.windows[windowId];
+    if (!win) continue;
+    if (win.topic_id !== fromTopicId) continue;
+    state.windows[windowId] = {
+      ...win,
+      topic_id: toTopicId,
+      updated_at: new Date().toISOString(),
+    };
+    updated++;
+  }
+
+  if (updated > 0) await writeState(cwd, state);
+  return updated;
+}
+
 export async function getAlias(cwd: string, name: string): Promise<string | undefined> {
   const state = await readState(cwd);
   return state.aliases[name];

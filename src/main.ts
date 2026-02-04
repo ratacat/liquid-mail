@@ -5,7 +5,7 @@ import { outputMode, printJson } from './cli/output';
 import { loadConfig } from './config/config';
 import { requireHonchoAuth } from './config/config';
 import { HonchoClient } from './honcho/client';
-import { createMessage, getSessionSummaries, listSessions, searchWorkspace } from './honcho/api';
+import { createMessage, getOrCreateSession, getSessionSummaries, listSessions, searchWorkspace, sessionExists } from './honcho/api';
 import { buildSearchFilters, filtersForSession, metadataEq } from './honcho/filters';
 import { checkDecisionConflicts } from './conflicts/check';
 import { detectDecision } from './decisions/detectDecision';
@@ -15,12 +15,13 @@ import { integrateProject, type IntegrateTarget } from './integrate/integrate';
 import { windowEnvSnippet } from './window/envSnippet';
 import { notifyForAgent } from './notify/notify';
 import { chooseTopicFromMatches, type WorkspaceSearchMatch } from './topics/autoTopic';
-import { resolveTopicForMessage } from './topics/resolveTopic';
 import { LIQUID_MAIL_VERSION } from './version';
-import { getPinnedTopicId, setPinnedTopicId } from './state/state';
+import { getPinnedTopicId, replacePinnedTopicId, resolveAlias, setAlias, setPinnedTopicId } from './state/state';
 import { statePathForCwd } from './state/state';
 import { windowNameFromId } from './window/nameFromId';
 import { watchTopic } from './watch/watch';
+import { validateTopicName } from './topics/validate';
+import { runPushServer } from './push/pushServer';
 
 function printHelpGlobal(): void {
   const text = [
@@ -32,8 +33,10 @@ function printHelpGlobal(): void {
     '  query       Search messages (TBD)',
     '  decisions   List/search decision messages (TBD)',
     '  topics      List Honcho sessions (TBD)',
+    '  topic       Manage topics (rename/merge)',
     '  notify      Context-based notifications (TBD)',
     '  watch       Watch a topic for new messages (polling)',
+    '  push        Run local push/webhook receiver',
     '  window      Show window/topic state',
     '  integrate   Install project-level instructions (claude/codex/opencode)',
     '  schema      Print JSON schemas used by Liquid Mail',
@@ -56,6 +59,45 @@ function printHelpGlobal(): void {
 }
 
 function printHelpForCommand(command: string): void {
+  if (command === 'topic') {
+    const text = [
+      'liquid-mail topic',
+      '',
+      'Manage topic lifecycle via aliases (rename/merge).',
+      '',
+      'Usage:',
+      '  liquid-mail topic rename <old> <new>',
+      '  liquid-mail topic merge <A> <B> --into <C>',
+      '',
+      'Examples:',
+      '  liquid-mail topic rename lm3189ed8785c64e879df0c7f331a04c40 auth-system',
+      '  liquid-mail topic merge auth-system authz --into auth',
+    ];
+    process.stdout.write(text.join('\n') + '\n');
+    return;
+  }
+
+  if (command === 'push') {
+    const text = [
+      'liquid-mail push',
+      '',
+      'Runs a local webhook receiver for true push (no polling).',
+      '',
+      'Usage:',
+      '  liquid-mail push [--bind <host>] [--port <port>] [--secret <value>] [--notify] [--topic <name>]',
+      '',
+      'Notes:',
+      '  Webhook path is always /hook.',
+      '  If --topic is set, events are posted into that topic.',
+      '',
+      'Examples:',
+      '  liquid-mail push --port 8808',
+      '  liquid-mail push --notify --topic push-inbox',
+    ];
+    process.stdout.write(text.join('\n') + '\n');
+    return;
+  }
+
   if (command === 'watch') {
     const text = [
       'liquid-mail watch',
@@ -232,14 +274,27 @@ async function run(): Promise<void> {
   }
 
   if (command === 'summarize') {
-    const topicId = getFlagString(flags, 'topic');
-    if (!topicId) {
+    const topicFlag = getFlagString(flags, 'topic');
+    if (!topicFlag) {
       throw new LmError({
         code: 'TOPIC_REQUIRED',
         message: 'Missing --topic for summarize.',
         exitCode: 2,
         retryable: false,
         suggestions: ['Re-run with --topic <SESSION_ID>'],
+      });
+    }
+
+    const topicId = await resolveAlias(process.cwd(), topicFlag);
+    const validation = validateTopicName(topicId);
+    if (!validation.valid) {
+      throw new LmError({
+        code: validation.code,
+        message: validation.reason,
+        exitCode: 2,
+        retryable: false,
+        suggestions: ['Run: liquid-mail topic rename <old> <new>'],
+        details: { topic: topicId },
       });
     }
 
@@ -269,10 +324,25 @@ async function run(): Promise<void> {
     }
 
     const limit = Number(getFlagString(flags, 'limit') ?? '10');
-    const topicId = getFlagString(flags, 'topic');
+    const topicFlag = getFlagString(flags, 'topic');
     const { config } = await loadConfigResolved();
     const auth = requireHonchoAuth(config);
     const client = new HonchoClient(auth);
+
+    const topicId = topicFlag ? await resolveAlias(process.cwd(), topicFlag) : undefined;
+    if (topicId) {
+      const validation = validateTopicName(topicId);
+      if (!validation.valid) {
+        throw new LmError({
+          code: validation.code,
+          message: validation.reason,
+          exitCode: 2,
+          retryable: false,
+          suggestions: ['Run: liquid-mail topic rename <old> <new>'],
+          details: { topic: topicId },
+        });
+      }
+    }
 
     const filters = topicId ? filtersForSession(topicId) : undefined;
     const searchRequest = { query, limit } as { query: string; limit: number; filters?: ReturnType<typeof filtersForSession> };
@@ -296,12 +366,263 @@ async function run(): Promise<void> {
     return;
   }
 
+  if (command === 'topic') {
+    const sub = (positionals[0] ?? '').trim();
+
+    if (sub === 'rename') {
+      const oldName = (positionals[1] ?? '').trim();
+      const newName = (positionals[2] ?? '').trim();
+
+      if (!oldName || !newName) {
+        throw new LmError({
+          code: 'INVALID_INPUT',
+          message: 'Expected: liquid-mail topic rename <old> <new>',
+          exitCode: 2,
+          retryable: false,
+          suggestions: ['Example: liquid-mail topic rename lm3189... auth-system'],
+        });
+      }
+
+      const validation = validateTopicName(newName);
+      if (!validation.valid) {
+        throw new LmError({
+          code: validation.code,
+          message: validation.reason,
+          exitCode: 2,
+          retryable: false,
+          suggestions: ['Use lowercase words with hyphens (example: auth-system)'],
+          details: { topic: newName },
+        });
+      }
+
+      const { config } = await loadConfigResolved();
+      const auth = requireHonchoAuth(config);
+      const client = new HonchoClient(auth);
+
+      if (await sessionExists(client, newName)) {
+        throw new LmError({
+          code: 'TOPIC_NAME_CONFLICT',
+          message: `Cannot rename to '${newName}': topic already exists.`,
+          exitCode: 2,
+          retryable: false,
+          suggestions: ['Use: liquid-mail topic merge <A> <B> --into <C>'],
+          details: { new: newName },
+        });
+      }
+
+      await setAlias(process.cwd(), oldName, newName);
+      const updatedWindows = await replacePinnedTopicId(process.cwd(), oldName, newName);
+
+      if (mode === 'json') {
+        printJson({
+          ok: true,
+          data: {
+            alias: { from: oldName, to: newName },
+            updated_windows: updatedWindows,
+          },
+        });
+      } else {
+        const extra = updatedWindows > 0 ? ` (updated ${updatedWindows} pinned window${updatedWindows === 1 ? '' : 's'})` : '';
+        process.stdout.write(`Created alias: ${oldName} → ${newName}${extra}\n`);
+      }
+      return;
+    }
+
+    if (sub === 'merge') {
+      const topicAInput = (positionals[1] ?? '').trim();
+      const topicBInput = (positionals[2] ?? '').trim();
+      const intoInput = (getFlagString(flags, 'into') ?? '').trim();
+
+      if (!topicAInput || !topicBInput || !intoInput) {
+        throw new LmError({
+          code: 'INVALID_INPUT',
+          message: 'Expected: liquid-mail topic merge <A> <B> --into <C>',
+          exitCode: 2,
+          retryable: false,
+          suggestions: ['Example: liquid-mail topic merge auth-system authz --into auth'],
+        });
+      }
+
+      const cwd = process.cwd();
+      const topicA = await resolveAlias(cwd, topicAInput);
+      const topicB = await resolveAlias(cwd, topicBInput);
+      const intoResolved = await resolveAlias(cwd, intoInput);
+      if (intoResolved !== intoInput) {
+        throw new LmError({
+          code: 'TOPIC_NAME_CONFLICT',
+          message: `Cannot merge into '${intoInput}': name resolves to existing alias '${intoResolved}'.`,
+          exitCode: 2,
+          retryable: false,
+          suggestions: ['Choose a fresh --into name', 'Run: liquid-mail topics'],
+          details: { into: intoInput, resolves_to: intoResolved },
+        });
+      }
+
+      const aValidation = validateTopicName(topicA);
+      if (!aValidation.valid) {
+        throw new LmError({
+          code: aValidation.code,
+          message: aValidation.reason,
+          exitCode: 2,
+          retryable: false,
+          suggestions: ['Rename legacy topics first: liquid-mail topic rename <old> <new>'],
+          details: { topic: topicAInput, resolved: topicA },
+        });
+      }
+      const bValidation = validateTopicName(topicB);
+      if (!bValidation.valid) {
+        throw new LmError({
+          code: bValidation.code,
+          message: bValidation.reason,
+          exitCode: 2,
+          retryable: false,
+          suggestions: ['Rename legacy topics first: liquid-mail topic rename <old> <new>'],
+          details: { topic: topicBInput, resolved: topicB },
+        });
+      }
+      const cValidation = validateTopicName(intoInput);
+      if (!cValidation.valid) {
+        throw new LmError({
+          code: cValidation.code,
+          message: cValidation.reason,
+          exitCode: 2,
+          retryable: false,
+          suggestions: ['Use lowercase words with hyphens (example: auth-system)'],
+          details: { topic: intoInput },
+        });
+      }
+
+      if (topicA === topicB) {
+        throw new LmError({
+          code: 'INVALID_MERGE_SOURCE',
+          message: 'Cannot merge a topic with itself.',
+          exitCode: 2,
+          retryable: false,
+          suggestions: ['Choose two different topics'],
+          details: { a: topicAInput, b: topicBInput, resolved_a: topicA, resolved_b: topicB },
+        });
+      }
+
+      const { config } = await loadConfigResolved();
+      const auth = requireHonchoAuth(config);
+      const client = new HonchoClient(auth);
+
+      const [aExists, bExists, cExists] = await Promise.all([
+        sessionExists(client, topicA),
+        sessionExists(client, topicB),
+        sessionExists(client, intoInput),
+      ]);
+
+      if (!aExists) {
+        throw new LmError({
+          code: 'TOPIC_NOT_FOUND',
+          message: `Topic not found: '${topicAInput}'.`,
+          exitCode: 2,
+          retryable: false,
+          suggestions: ['Run: liquid-mail topics'],
+          details: { topic: topicAInput, resolved: topicA },
+        });
+      }
+      if (!bExists) {
+        throw new LmError({
+          code: 'TOPIC_NOT_FOUND',
+          message: `Topic not found: '${topicBInput}'.`,
+          exitCode: 2,
+          retryable: false,
+          suggestions: ['Run: liquid-mail topics'],
+          details: { topic: topicBInput, resolved: topicB },
+        });
+      }
+      if (cExists) {
+        throw new LmError({
+          code: 'TOPIC_NAME_CONFLICT',
+          message: `Cannot merge into '${intoInput}': topic already exists.`,
+          exitCode: 2,
+          retryable: false,
+          suggestions: ['Choose a fresh --into name', 'Use: liquid-mail topic rename <old> <new>'],
+          details: { into: intoInput },
+        });
+      }
+
+      const intoTopicId = intoInput;
+      await getOrCreateSession(client, {
+        session_id: intoTopicId,
+        metadata: {
+          'lm.kind': 'topic_merge',
+          'lm.merged_from': [topicA, topicB],
+        },
+      });
+
+      const systemPeerId = config.decisions.systemPeerId;
+      const redirectText = (from: string) =>
+        `⚠️ Topic '${from}' merged into '${intoTopicId}'. Future posts should use --topic ${intoTopicId}.`;
+
+      await createMessage(client, topicA, {
+        peer_id: systemPeerId,
+        content: redirectText(topicAInput),
+        metadata: { 'lm.kind': 'topic_merge_redirect', 'lm.merged_into': intoTopicId },
+      });
+      await createMessage(client, topicB, {
+        peer_id: systemPeerId,
+        content: redirectText(topicBInput),
+        metadata: { 'lm.kind': 'topic_merge_redirect', 'lm.merged_into': intoTopicId },
+      });
+
+      const sources = Array.from(new Set([topicAInput, topicA, topicBInput, topicB]));
+      let updatedWindows = 0;
+      for (const source of sources) {
+        if (source === intoTopicId) continue;
+        await setAlias(cwd, source, intoTopicId);
+        updatedWindows += await replacePinnedTopicId(cwd, source, intoTopicId);
+      }
+
+      if (mode === 'json') {
+        printJson({
+          ok: true,
+          data: {
+            merged: { a: topicAInput, b: topicBInput, into: intoTopicId },
+            aliases_created: sources.filter((s) => s !== intoTopicId).map((s) => ({ from: s, to: intoTopicId })),
+            updated_windows: updatedWindows,
+          },
+        });
+      } else {
+        const extra = updatedWindows > 0 ? ` (updated ${updatedWindows} pinned window${updatedWindows === 1 ? '' : 's'})` : '';
+        process.stdout.write(`Merged ${topicAInput} + ${topicBInput} → ${intoTopicId}${extra}\n`);
+      }
+      return;
+    }
+
+    throw new LmError({
+      code: 'INVALID_INPUT',
+      message: 'Expected: liquid-mail topic rename|merge ...',
+      exitCode: 2,
+      retryable: false,
+      suggestions: ['Run: liquid-mail topic rename <old> <new>'],
+      details: { sub },
+    });
+  }
+
   if (command === 'decisions') {
     const limit = Number(getFlagString(flags, 'limit') ?? '10');
-    const topicId = getFlagString(flags, 'topic');
+    const topicFlag = getFlagString(flags, 'topic');
     const { config } = await loadConfigResolved();
     const auth = requireHonchoAuth(config);
     const client = new HonchoClient(auth);
+
+    const topicId = topicFlag ? await resolveAlias(process.cwd(), topicFlag) : undefined;
+    if (topicId) {
+      const validation = validateTopicName(topicId);
+      if (!validation.valid) {
+        throw new LmError({
+          code: validation.code,
+          message: validation.reason,
+          exitCode: 2,
+          retryable: false,
+          suggestions: ['Run: liquid-mail topic rename <old> <new>'],
+          details: { topic: topicId },
+        });
+      }
+    }
 
     const filterParams: { sessionIds?: string[]; metadata?: Record<string, ReturnType<typeof metadataEq>> } = {
       metadata: { 'lm.kind': metadataEq('decision') },
@@ -317,6 +638,65 @@ async function run(): Promise<void> {
 
     if (mode === 'json') printJson({ ok: true, data: results });
     else process.stdout.write(JSON.stringify(results, null, 2) + '\n');
+    return;
+  }
+
+  if (command === 'push') {
+    const bind = (getFlagString(flags, 'bind') ?? '127.0.0.1').trim();
+    const port = Number(getFlagString(flags, 'port') ?? '8808');
+    const secret = (getFlagString(flags, 'secret') ?? process.env.LIQUID_MAIL_PUSH_SECRET ?? '').trim() || undefined;
+    const notify = flags['notify'] === true;
+    const topicFlag = getFlagString(flags, 'topic');
+
+    if (!Number.isFinite(port) || port <= 0 || port > 65535) {
+      throw new LmError({
+        code: 'INVALID_INPUT',
+        message: 'Invalid --port (expected 1-65535).',
+        exitCode: 2,
+        retryable: false,
+        suggestions: ['Re-run: liquid-mail push --port 8808'],
+        details: { port },
+      });
+    }
+
+    const cwd = process.cwd();
+    const topicId = topicFlag ? await resolveAlias(cwd, topicFlag) : undefined;
+    if (topicId) {
+      const validation = validateTopicName(topicId);
+      if (!validation.valid) {
+        throw new LmError({
+          code: validation.code,
+          message: validation.reason,
+          exitCode: 2,
+          retryable: false,
+          suggestions: ['Use lowercase words with hyphens (example: push-inbox)'],
+          details: { topic: topicId },
+        });
+      }
+    }
+
+    // Lazily build Honcho client only if posting into a topic.
+    let honchoClient: HonchoClient | undefined = undefined;
+    if (topicId) {
+      const { config } = await loadConfigResolved();
+      const auth = requireHonchoAuth(config);
+      honchoClient = new HonchoClient(auth);
+    }
+
+    await runPushServer({
+      bind,
+      port,
+      ...(secret ? { secret } : {}),
+      notify,
+      ...(topicId ? { topicId } : {}),
+      ...(honchoClient ? { client: honchoClient } : {}),
+      output: {
+        json: mode === 'json',
+        write: (text) => {
+          process.stdout.write(text);
+        },
+      },
+    });
     return;
   }
 
@@ -381,6 +761,8 @@ async function run(): Promise<void> {
         suggestions: ['Pass --topic <SESSION_ID>', 'Or run liquid-mail post once to pin a topic'],
       });
     }
+
+    topicId = await resolveAlias(process.cwd(), topicId);
 
     const { config } = await loadConfigResolved();
     const auth = requireHonchoAuth(config);
@@ -516,7 +898,7 @@ async function run(): Promise<void> {
     const client = new HonchoClient(auth);
 
     let resolvedTopicId = topicId;
-    let topicDecision = undefined as Awaited<ReturnType<typeof resolveTopicForMessage>> | undefined;
+    const topicDecision = null;
 
     if (!resolvedTopicId) {
       const windowId = process.env.LIQUID_MAIL_WINDOW_ID;
@@ -527,37 +909,29 @@ async function run(): Promise<void> {
     }
 
     if (!resolvedTopicId) {
-      topicDecision = await resolveTopicForMessage({
-        client,
-        message,
-        config: config.topics,
-        titleHint: message.slice(0, 80),
-      });
-
-      if (topicDecision.action === 'assigned') {
-        resolvedTopicId = topicDecision.chosenTopicId;
-      } else if (topicDecision.action === 'created') {
-        resolvedTopicId = topicDecision.createdTopicId;
-      } else {
-        throw new LmError({
-          code: 'TOPIC_REQUIRED',
-          message: 'No --topic provided and auto-topic was inconclusive.',
-          exitCode: 2,
-          retryable: false,
-          suggestions: ['Re-run with --topic <SESSION_ID>', 'Adjust topics.auto_create'],
-          details: { topicDecision },
-        });
-      }
-    }
-
-    if (!resolvedTopicId) {
       throw new LmError({
         code: 'TOPIC_REQUIRED',
-        message: 'Unable to resolve topic.',
+        message: 'No topic specified. Use --topic <name> or post to a pinned window.',
         exitCode: 2,
         retryable: false,
-        suggestions: ['Re-run with --topic <SESSION_ID>'],
-        details: { topicDecision },
+        suggestions: ['Run: liquid-mail topics', 'Re-run with --topic <name>', 'Or pin a topic by posting once with --topic'],
+      });
+    }
+
+    resolvedTopicId = await resolveAlias(process.cwd(), resolvedTopicId);
+    const topicValidation = validateTopicName(resolvedTopicId);
+    if (!topicValidation.valid) {
+      throw new LmError({
+        code: topicValidation.code,
+        message: topicValidation.reason,
+        exitCode: 2,
+        retryable: false,
+        suggestions: [
+          'Use lowercase words with hyphens (example: auth-system)',
+          'Run: liquid-mail topic rename <old> <new>',
+          'Run: liquid-mail topics',
+        ],
+        details: { topic: resolvedTopicId },
       });
     }
 

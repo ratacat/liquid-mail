@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
-import { readState, resolveAlias, setAlias, statePathForCwd } from '../src/state/state';
+import { readState, replacePinnedTopicId, resolveAlias, setAlias, setPinnedTopicId, statePathForCwd } from '../src/state/state';
 
 async function makeTempRepo(): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), 'liquid-mail-state-'));
@@ -46,5 +46,18 @@ describe('state schema v2', () => {
     expect(state.aliases).toEqual({ a: 'c', b: 'c' });
     expect(await resolveAlias(cwd, 'b')).toBe('c');
   });
-});
 
+  it('replaces pinned topic ids across windows', async () => {
+    const cwd = await makeTempRepo();
+
+    await setPinnedTopicId(cwd, 'win1', 'old-topic');
+    await setPinnedTopicId(cwd, 'win2', 'keep-topic');
+
+    const updated = await replacePinnedTopicId(cwd, 'old-topic', 'new-topic');
+    expect(updated).toBe(1);
+
+    const state = await readState(cwd);
+    expect(state.windows.win1?.topic_id).toBe('new-topic');
+    expect(state.windows.win2?.topic_id).toBe('keep-topic');
+  });
+});
