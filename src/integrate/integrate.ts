@@ -8,7 +8,6 @@ import {
   LIQUID_MAIL_AGENTS_BLOCK_END,
   buildBlockStart,
   computeSnippetHash,
-  extractHashFromBlock,
   getAgentSnippet,
   hasLiquidMailBlock as hasBlock,
   OPENCODE_INSTRUCTIONS_RELATIVE_PATH,
@@ -65,12 +64,6 @@ async function integrateManagedMarkdownFile(target: IntegrateTarget, filePath: s
   const blockStart = buildBlockStart(hash);
   const block = buildManagedBlock(blockStart, snippet, LIQUID_MAIL_AGENTS_BLOCK_END);
   const existing = await readTextIfExists(filePath);
-
-  // Check if existing block has same hash (already up to date)
-  const existingHash = extractHashFromBlock(existing);
-  if (existingHash === hash) {
-    return { target, files: [{ path: filePath, action: 'unchanged' }] };
-  }
 
   const next = upsertManagedBlock(existing, block, blockStart, LIQUID_MAIL_AGENTS_BLOCK_END);
   const action = await writeTextIfChanged(filePath, existing, next);

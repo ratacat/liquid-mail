@@ -4,7 +4,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { integrateProject } from '../src/integrate/integrate';
-import { LIQUID_MAIL_AGENTS_BLOCK_END, LIQUID_MAIL_AGENTS_BLOCK_START_PREFIX } from '../src/integrate/snippets';
+import {
+  LIQUID_MAIL_AGENTS_BLOCK_END,
+  LIQUID_MAIL_AGENTS_BLOCK_START_PREFIX,
+  buildBlockStart,
+  computeSnippetHash,
+  getAgentSnippet,
+} from '../src/integrate/snippets';
+import { extractManagedBlockContent } from '../src/integrate/textBlocks';
 
 async function fileExists(path: string): Promise<boolean> {
   try {
@@ -79,5 +86,25 @@ describe('integrate runs at repo root', () => {
     expect(text).toContain(LIQUID_MAIL_AGENTS_BLOCK_START_PREFIX);
     expect(text).toContain(LIQUID_MAIL_AGENTS_BLOCK_END);
     expect(await fileExists(join(dir, 'subdir', 'AGENTS.md'))).toBe(false);
+  });
+});
+
+describe('integrate managed block updates', () => {
+  it('updates the block when content was manually edited even if the hash matches', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'liquid-mail-integrate-'));
+
+    const snippet = getAgentSnippet();
+    const hash = computeSnippetHash(snippet);
+    const start = buildBlockStart(hash);
+
+    const agentsPath = join(dir, 'AGENTS.md');
+    await writeFile(agentsPath, [start, 'TAMPERED', LIQUID_MAIL_AGENTS_BLOCK_END].join('\n') + '\n', 'utf8');
+
+    const result = await integrateProject({ cwd: dir, target: 'codex' });
+    expect(result.files[0]?.action).toBe('updated');
+
+    const updatedText = await readFile(agentsPath, 'utf8');
+    const content = extractManagedBlockContent(updatedText, LIQUID_MAIL_AGENTS_BLOCK_START_PREFIX, LIQUID_MAIL_AGENTS_BLOCK_END);
+    expect(content).toBe(snippet.trim());
   });
 });
