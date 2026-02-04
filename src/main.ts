@@ -19,6 +19,7 @@ import { resolveTopicForMessage } from './topics/resolveTopic';
 import { LIQUID_MAIL_VERSION } from './version';
 import { getPinnedTopicId, setPinnedTopicId } from './state/state';
 import { statePathForCwd } from './state/state';
+import { windowNameFromId } from './window/nameFromId';
 
 function printHelp(): void {
   const text = [
@@ -331,10 +332,27 @@ async function run(): Promise<void> {
       return;
     }
 
+    if (sub === 'name') {
+      const windowId = process.env.LIQUID_MAIL_WINDOW_ID;
+      if (!windowId) {
+        throw new LmError({
+          code: 'INVALID_INPUT',
+          message: 'Missing LIQUID_MAIL_WINDOW_ID.',
+          exitCode: 2,
+          retryable: false,
+          suggestions: ['Set LIQUID_MAIL_WINDOW_ID (per terminal)', 'Or run: liquid-mail window env'],
+        });
+      }
+      const name = windowNameFromId(windowId);
+      if (mode === 'json') printJson({ ok: true, data: { window_id: windowId, window_name: name } });
+      else process.stdout.write(`${name}\n`);
+      return;
+    }
+
     if (sub !== 'status') {
       throw new LmError({
         code: 'INVALID_INPUT',
-        message: 'Expected: liquid-mail window status|env',
+        message: 'Expected: liquid-mail window status|env|name',
         exitCode: 2,
         retryable: false,
         suggestions: ['Run: liquid-mail window status', 'Run: liquid-mail window env'],
@@ -354,7 +372,12 @@ async function run(): Promise<void> {
 
     const statePath = statePathForCwd(process.cwd());
     const pinnedTopicId = await getPinnedTopicId(process.cwd(), windowId);
-    const payload = { window_id: windowId, pinned_topic_id: pinnedTopicId ?? null, state_path: statePath };
+    const payload = {
+      window_id: windowId,
+      window_name: windowNameFromId(windowId),
+      pinned_topic_id: pinnedTopicId ?? null,
+      state_path: statePath,
+    };
 
     if (mode === 'json') printJson({ ok: true, data: payload });
     else process.stdout.write(JSON.stringify(payload, null, 2) + '\n');
