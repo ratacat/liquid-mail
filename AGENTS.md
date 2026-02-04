@@ -37,3 +37,36 @@ br sync               # Sync with git
 - NEVER stop before pushing - that leaves work stranded locally
 - NEVER say "ready to push when you are" - YOU must push
 - If push fails, resolve and retry until it succeeds
+
+## Releases
+
+The installer (`install.sh`) downloads binaries from **GitHub Releases**, not from the `main` branch directly.
+
+**When to create a release:**
+- Changes to the CLI binary (new commands, bug fixes, behavior changes)
+- Changes to embedded snippets (`src/integrate/snippets.ts`)
+- Any change that affects what users get from `install.sh`
+
+**How to create a release:**
+```bash
+# 1. Bump version
+npm version <major|minor|patch> --no-git-tag-version
+
+# 2. Build
+npm run build
+
+# 3. Package binary
+mkdir -p release
+tar -czvf release/liquid-mail-darwin-arm64.tar.gz -C dist liquid-mail
+
+# 4. Commit, tag, push
+git add package.json src/version.ts
+git commit -m "Bump version to vX.Y.Z"
+git tag vX.Y.Z
+git push && git push origin vX.Y.Z
+
+# 5. Create release with binary
+gh release create vX.Y.Z release/liquid-mail-darwin-arm64.tar.gz --title "vX.Y.Z" --notes "Release notes here"
+```
+
+**Note:** Currently only darwin-arm64 binary is built. For cross-platform releases, additional builds would be needed.
