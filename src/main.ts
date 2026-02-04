@@ -280,7 +280,7 @@ async function run(): Promise<void> {
         message: 'Missing --agent-id for notify.',
         exitCode: 2,
         retryable: false,
-        suggestions: ['Re-run with --agent-id <PEER_ID>', 'Or set LIQUID_MAIL_AGENT_ID'],
+        suggestions: ['Re-run with --agent-id <PEER_ID>', 'Or set LIQUID_MAIL_WINDOW_ID'],
       });
     }
 

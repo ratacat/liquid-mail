@@ -4,8 +4,8 @@ If a command errors, run `liquid-mail --help` to see what's available in your in
 
 ## 50-Token Quick Start
 
-1. Start work by checking for relevant updates: `liquid-mail notify --agent-id <you>`.
-2. Post progress: `liquid-mail post --agent-id <you> "…"`.
+1. Start work by checking for relevant updates: `liquid-mail notify`.
+2. Post progress: `liquid-mail post "…"`.
 3. If you’re making a decision, include `DECISION:` and pass `--decision`.
 4. Before a major decision, scan prior decisions: `liquid-mail decisions --topic <id>`.
 
@@ -13,10 +13,10 @@ If a command errors, run `liquid-mail --help` to see what's available in your in
 
 Post an event message:
 
-- Start: `liquid-mail post --event start --agent-id <you> "START: …"`
-- Finish: `liquid-mail post --event finish --agent-id <you> "FINISH: …"`
-- Bug/issue: `liquid-mail post --event issue --agent-id <you> "ISSUE: …"`
-- User feedback: `liquid-mail post --event feedback --agent-id <you> "FEEDBACK: …"`
+- Start: `liquid-mail post --event start "START: …"`
+- Finish: `liquid-mail post --event finish "FINISH: …"`
+- Bug/issue: `liquid-mail post --event issue "ISSUE: …"`
+- User feedback: `liquid-mail post --event feedback "FEEDBACK: …"`
 
 ## Posting Guide (100 Tokens)
 
@@ -31,7 +31,7 @@ Post an event message:
 
 ## Before You Start Work (150 Tokens)
 
-1. `liquid-mail notify --agent-id <you>` to see what changed since you last looked.
+1. `liquid-mail notify` to see what changed since you last looked.
 2. If you have a candidate topic, skim:
    - `liquid-mail summarize --topic <id>`
    - `liquid-mail decisions --topic <id>`
@@ -66,8 +66,7 @@ Troubleshooting:
 - `liquid-mail schema --json` prints the JSON schemas used for strict outputs.
 
 Identity:
-- Prefer setting `LIQUID_MAIL_AGENT_ID` so tools don’t rely on “remembering” IDs.
-- Prefer setting `LIQUID_MAIL_WINDOW_ID` (unique per terminal) and let Liquid Mail pin a topic per window.
+- Set `LIQUID_MAIL_WINDOW_ID` (unique per terminal) and let Liquid Mail pin a topic per window.
 
 Tip:
 - Print the recommended shell snippet with `liquid-mail window env`.

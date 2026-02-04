@@ -50,6 +50,7 @@ export async function getPinnedTopicId(cwd: string, windowId: string): Promise<s
 
 export async function setPinnedTopicId(cwd: string, windowId: string, topicId: string): Promise<void> {
   const state = await readState(cwd);
+  if (state.windows[windowId]?.topic_id === topicId) return;
   state.windows[windowId] = {
     ...(state.windows[windowId] ?? {}),
     topic_id: topicId,
@@ -80,4 +81,3 @@ function findGitRoot(startDir: string): string | undefined {
 
   return undefined;
 }
-

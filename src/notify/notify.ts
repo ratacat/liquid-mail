@@ -56,18 +56,21 @@ export async function notifyForAgent(params: {
 
   const sessions = await listSessions(client, { limit: sessionLimit });
 
-  const summaryItems: NotifyItem[] = [];
-  for (const session of sessions.sessions) {
-    const summaries = await getSessionSummaries(client, session.id);
-    const short = summaries.summaries.find((summary) => summary.kind === 'short') ?? summaries.summaries[0];
-    if (!short) continue;
-    summaryItems.push({
-      topic_id: session.id,
-      reason: 'summary',
-      excerpt: truncate(short.content, 160),
-      confidence: 0.5,
-    });
-  }
+  const summaryItems = (
+    await Promise.all(
+      sessions.sessions.map(async (session): Promise<NotifyItem | undefined> => {
+        const summaries = await getSessionSummaries(client, session.id);
+        const short = summaries.summaries.find((summary) => summary.kind === 'short') ?? summaries.summaries[0];
+        if (!short) return undefined;
+        return {
+          topic_id: session.id,
+          reason: 'summary',
+          excerpt: truncate(short.content, 160),
+          confidence: 0.5,
+        };
+      }),
+    )
+  ).filter((item): item is NotifyItem => item !== undefined);
 
   const decisionItems: NotifyItem[] = decisions.matches.map((match) => ({
     topic_id: match.session_id,

@@ -1,5 +1,6 @@
 dist/
 node_modules/
+.liquid-mail/
 .DS_Store
 *.log
 .env

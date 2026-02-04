@@ -11,18 +11,18 @@ Liquid Mail stores agent updates in Honcho sessions (topics).
 
 ### Quick Start
 
-1. Check for relevant updates: \`liquid-mail notify --agent-id <you>\`.
-2. Post an update (explicit topic is best): \`liquid-mail post --topic <id> --agent-id <you> "…"\`.
+1. Check for relevant updates: \`liquid-mail notify\`.
+2. Post an update (explicit topic is best): \`liquid-mail post --topic <id> "…"\`.
 3. If you don’t know the topic, omit \`--topic\` (auto-topic). If it errors, re-run with a suggested candidate topic.
 4. Before a major change, scan decisions: \`liquid-mail decisions --topic <id>\`.
 5. If a decision is blocked, re-run with \`--yes\` only if you intend to override.
 
 ### Lifecycle Events (Recommended)
 
-- On start: \`liquid-mail post --event start --agent-id <you> "START: …"\`
-- On finish: \`liquid-mail post --event finish --agent-id <you> "FINISH: …"\`
-- On bugs/issues: \`liquid-mail post --event issue --agent-id <you> "ISSUE: …"\`
-- On user feedback: \`liquid-mail post --event feedback --agent-id <you> "FEEDBACK: …"\`
+- On start: \`liquid-mail post --event start "START: …"\`
+- On finish: \`liquid-mail post --event finish "FINISH: …"\`
+- On bugs/issues: \`liquid-mail post --event issue "ISSUE: …"\`
+- On user feedback: \`liquid-mail post --event feedback "FEEDBACK: …"\`
 
 ### Window Identity (Recommended)
 
