@@ -532,24 +532,19 @@ async function run(): Promise<void> {
         message,
         config: config.topics,
         titleHint: message.slice(0, 80),
-        systemPeerId: config.decisions.systemPeerId,
       });
 
       if (topicDecision.action === 'assigned') {
         resolvedTopicId = topicDecision.chosenTopicId;
-      } else if (topicDecision.action === 'created' || topicDecision.action === 'merged') {
+      } else if (topicDecision.action === 'created') {
         resolvedTopicId = topicDecision.createdTopicId;
       } else {
-        const errorCode = topicDecision.action === 'blocked' ? 'TOPIC_LIMIT_REACHED' : 'TOPIC_REQUIRED';
         throw new LmError({
-          code: errorCode,
-          message:
-            topicDecision.action === 'blocked'
-              ? 'Topic cap reached; cannot auto-create new topic.'
-              : 'No --topic provided and auto-topic was inconclusive.',
+          code: 'TOPIC_REQUIRED',
+          message: 'No --topic provided and auto-topic was inconclusive.',
           exitCode: 2,
           retryable: false,
-          suggestions: ['Re-run with --topic <SESSION_ID>', 'Adjust topics.auto_create or topics.max_active'],
+          suggestions: ['Re-run with --topic <SESSION_ID>', 'Adjust topics.auto_create'],
           details: { topicDecision },
         });
       }

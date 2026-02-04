@@ -1,8 +1,7 @@
 import type { LiquidMailConfig } from '../config/config';
 import { HonchoClient } from '../honcho/client';
-import { getOrCreateSession, listSessions, searchWorkspace } from '../honcho/api';
+import { getOrCreateSession, searchWorkspace } from '../honcho/api';
 import { chooseTopicFromMatches } from './autoTopic';
-import { consolidateTopics } from './consolidate';
 
 export type CandidateTopic = {
   sessionId: string;
@@ -11,18 +10,15 @@ export type CandidateTopic = {
 };
 
 export type AutoTopicDecision = {
-  action: 'assigned' | 'created' | 'merged' | 'requires_topic' | 'disabled' | 'blocked';
+  action: 'assigned' | 'created' | 'requires_topic' | 'disabled';
   chosenTopicId?: string;
   createdTopicId?: string;
-  mergedFrom?: [string, string];
   dominance: number;
   bestTopicId?: string;
   bestCount: number;
   totalMatches: number;
   candidates: CandidateTopic[];
   reason?: string;
-  maxActive?: number;
-  activeCount?: number;
 };
 
 export async function resolveTopicForMessage(params: {
@@ -30,9 +26,8 @@ export async function resolveTopicForMessage(params: {
   message: string;
   config: LiquidMailConfig['topics'];
   titleHint?: string;
-  systemPeerId?: string;
 }): Promise<AutoTopicDecision> {
-  const { client, message, config, titleHint, systemPeerId } = params;
+  const { client, message, config, titleHint } = params;
 
   if (!config.detectionEnabled) {
     return emptyDecision('disabled', 'detection_disabled');
@@ -74,37 +69,6 @@ export async function resolveTopicForMessage(params: {
       action: 'requires_topic',
       reason: 'auto_create_disabled',
     };
-  }
-
-  if (config.maxActive !== undefined) {
-    const list = await listSessions(client, { limit: config.maxActive + 1 });
-    const activeCount = list.sessions.length;
-    if (activeCount >= config.maxActive) {
-      if (config.consolidationStrategy === 'merge' && systemPeerId) {
-        const mergePlan = await consolidateTopics({
-          client,
-          systemPeerId,
-          sessionLimit: config.maxActive,
-        });
-        return {
-          ...baseDecision,
-          action: 'merged',
-          createdTopicId: mergePlan.mergedTopicId,
-          mergedFrom: mergePlan.mergedFrom,
-          reason: mergePlan.reason ?? 'merged_due_to_max_active',
-          maxActive: config.maxActive,
-          activeCount,
-        };
-      }
-
-      return {
-        ...baseDecision,
-        action: 'blocked',
-        reason: 'max_active_reached',
-        maxActive: config.maxActive,
-        activeCount,
-      };
-    }
   }
 
   const createRequest = titleHint ? { title: titleHint } : {};

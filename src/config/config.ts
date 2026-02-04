@@ -20,8 +20,6 @@ export type LiquidMailConfig = {
     autoAssignThreshold: number;
     autoAssignK: number;
     autoAssignMinHits: number;
-    maxActive?: number;
-    consolidationStrategy: 'merge' | 'archive' | 'summarize';
   };
   conflicts: {
     enabled: boolean;
@@ -57,7 +55,6 @@ function defaultConfig(): LiquidMailConfig {
       autoAssignThreshold: 0.8,
       autoAssignK: 10,
       autoAssignMinHits: 2,
-      consolidationStrategy: 'merge',
     },
     conflicts: {
       enabled: true,
@@ -150,12 +147,10 @@ function mergeConfig(base: LiquidMailConfig, partial: unknown): LiquidMailConfig
     merged.topics.autoAssignK = getNumber(topics, 'auto_assign_k') ?? getNumber(topics, 'autoAssignK') ?? merged.topics.autoAssignK;
     merged.topics.autoAssignMinHits =
       getNumber(topics, 'auto_assign_min_hits') ?? getNumber(topics, 'autoAssignMinHits') ?? merged.topics.autoAssignMinHits;
+
     const maxActive = getNumber(topics, 'max_active') ?? getNumber(topics, 'maxActive');
-    if (maxActive !== undefined) merged.topics.maxActive = maxActive;
-    const consolidation =
-      getString(topics, 'consolidation_strategy') ?? getString(topics, 'consolidationStrategy') ?? merged.topics.consolidationStrategy;
-    if (consolidation === 'merge' || consolidation === 'archive' || consolidation === 'summarize') {
-      merged.topics.consolidationStrategy = consolidation;
+    if (maxActive !== undefined) {
+      console.warn('Warning: topics.max_active is deprecated and ignored');
     }
   }
 

@@ -68,8 +68,15 @@ export async function listSessions(
     },
   );
 
+  const sorted = [...(page.items ?? [])].sort((a, b) => {
+    const aTime = a.created_at ?? '';
+    const bTime = b.created_at ?? '';
+    if (aTime !== bTime) return bTime.localeCompare(aTime);
+    return String(b.id ?? '').localeCompare(String(a.id ?? ''));
+  });
+
   return {
-    sessions: (page.items ?? []).slice(0, pageSize).map((item) => ({
+    sessions: sorted.slice(0, pageSize).map((item) => ({
       id: item.id,
       created_at: item.created_at,
       metadata: item.metadata,
