@@ -4,7 +4,7 @@ import { buildSearchFilters, metadataEq } from '../honcho/filters';
 
 export type NotifyItem = {
   topic_id: string;
-  reason: 'decision' | 'summary' | 'mention';
+  reason: 'decision' | 'summary' | 'mention' | 'event';
   excerpt: string;
   confidence: number;
 };
@@ -14,10 +14,11 @@ export async function notifyForAgent(params: {
   agentId: string;
   since?: string;
   decisionLimit?: number;
+  eventLimit?: number;
   mentionLimit?: number;
   sessionLimit?: number;
 }): Promise<NotifyItem[]> {
-  const { client, agentId, since, decisionLimit = 10, mentionLimit = 10, sessionLimit = 5 } = params;
+  const { client, agentId, since, decisionLimit = 10, eventLimit = 10, mentionLimit = 10, sessionLimit = 5 } = params;
 
   const decisionFilterParams: { since?: string; metadata?: Record<string, ReturnType<typeof metadataEq>> } = {
     metadata: { 'lm.kind': metadataEq('decision') },
@@ -27,6 +28,22 @@ export async function notifyForAgent(params: {
     query: 'decision',
     limit: decisionLimit,
     filters: buildSearchFilters(decisionFilterParams),
+  });
+
+  const eventFilterParams: {
+    since?: string;
+    metadata?: Record<string, ReturnType<typeof metadataEq>>;
+  } = {
+    metadata: {
+      'lm.kind': metadataEq('event'),
+      'lm.agent_id': metadataEq(agentId),
+    },
+  };
+  if (since) eventFilterParams.since = since;
+  const events = await searchWorkspace(client, {
+    query: agentId,
+    limit: eventLimit,
+    filters: buildSearchFilters(eventFilterParams),
   });
 
   const mentionFilterParams: { since?: string } = {};
@@ -59,6 +76,16 @@ export async function notifyForAgent(params: {
     confidence: 0.9,
   }));
 
+  const eventItems: NotifyItem[] = events.matches.map((match) => {
+    const excerpt = truncate(match.snippet ?? `Event for ${agentId}`, 160);
+    return {
+      topic_id: match.session_id,
+      reason: 'event',
+      excerpt,
+      confidence: scoreEvent(excerpt),
+    };
+  });
+
   const mentionItems: NotifyItem[] = mentions.matches.map((match) => ({
     topic_id: match.session_id,
     reason: 'mention',
@@ -66,7 +93,7 @@ export async function notifyForAgent(params: {
     confidence: 0.7,
   }));
 
-  return [...decisionItems, ...mentionItems, ...summaryItems].sort((a, b) => {
+  return [...decisionItems, ...eventItems, ...mentionItems, ...summaryItems].sort((a, b) => {
     if (b.confidence !== a.confidence) return b.confidence - a.confidence;
     if (a.topic_id !== b.topic_id) return a.topic_id.localeCompare(b.topic_id);
     return a.reason.localeCompare(b.reason);
@@ -76,4 +103,13 @@ export async function notifyForAgent(params: {
 function truncate(text: string, max: number): string {
   if (text.length <= max) return text;
   return `${text.slice(0, Math.max(0, max - 1))}…`;
+}
+
+function scoreEvent(excerpt: string): number {
+  const upper = excerpt.toUpperCase();
+  if (upper.includes('ISSUE:')) return 0.95;
+  if (upper.includes('FEEDBACK:')) return 0.9;
+  if (upper.includes('START:')) return 0.6;
+  if (upper.includes('FINISH:')) return 0.75;
+  return 0.65;
 }

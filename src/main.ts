@@ -266,7 +266,8 @@ async function run(): Promise<void> {
   }
 
   if (command === 'notify') {
-    const agentId = getFlagString(flags, 'agent-id') ?? getFlagString(flags, 'agentId');
+    const agentId =
+      getFlagString(flags, 'agent-id') ?? getFlagString(flags, 'agentId') ?? process.env.LIQUID_MAIL_AGENT_ID;
     const since = getFlagString(flags, 'since');
     if (!agentId) {
       throw new LmError({
@@ -274,7 +275,7 @@ async function run(): Promise<void> {
         message: 'Missing --agent-id for notify.',
         exitCode: 2,
         retryable: false,
-        suggestions: ['Re-run with --agent-id <PEER_ID>'],
+        suggestions: ['Re-run with --agent-id <PEER_ID>', 'Or set LIQUID_MAIL_AGENT_ID'],
       });
     }
 
@@ -314,9 +315,11 @@ async function run(): Promise<void> {
 
   if (command === 'post') {
     const topicId = getFlagString(flags, 'topic');
-    const agentId = getFlagString(flags, 'agent-id') ?? getFlagString(flags, 'agentId');
+    const agentId =
+      getFlagString(flags, 'agent-id') ?? getFlagString(flags, 'agentId') ?? process.env.LIQUID_MAIL_AGENT_ID;
     const decisionFlag = flags['decision'] === true || getFlagString(flags, 'decision') === 'true';
     const bypassConflicts = flags['yes'] === true || flags['y'] === true;
+    const event = getFlagString(flags, 'event');
     const message = await readMessage(positionals);
 
     if (!message) {
@@ -412,10 +415,14 @@ async function run(): Promise<void> {
     }
 
     const peerId = agentId ?? 'liquid-mail';
-    const created = await createMessage(client, resolvedTopicId, {
+    const messageRequest: { peer_id: string; content: string; metadata?: Record<string, string> } = {
       peer_id: peerId,
       content: message,
-    });
+    };
+    if (event && (event === 'start' || event === 'finish' || event === 'issue' || event === 'feedback')) {
+      messageRequest.metadata = { 'lm.kind': 'event', 'lm.event': event, 'lm.agent_id': peerId };
+    }
+    const created = await createMessage(client, resolvedTopicId, messageRequest);
 
     let decisionIndexResult: unknown = undefined;
     if (config.decisions.enabled && decisionDetection.isDecision) {

@@ -17,6 +17,13 @@ Liquid Mail stores agent updates in Honcho sessions (topics).
 4. Before a major change, scan decisions: \`liquid-mail decisions --topic <id>\`.
 5. If a decision is blocked, re-run with \`--yes\` only if you intend to override.
 
+### Lifecycle Events (Recommended)
+
+- On start: \`liquid-mail post --event start --agent-id <you> "START: …"\`
+- On finish: \`liquid-mail post --event finish --agent-id <you> "FINISH: …"\`
+- On bugs/issues: \`liquid-mail post --event issue --agent-id <you> "ISSUE: …"\`
+- On user feedback: \`liquid-mail post --event feedback --agent-id <you> "FEEDBACK: …"\`
+
 ### Posting Format (Machine-Friendly)
 
 - Prefer 5-15 lines over walls of text.

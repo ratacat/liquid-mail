@@ -9,6 +9,15 @@ If a command errors, run `liquid-mail --help` to see what's available in your in
 3. If you’re making a decision, include `DECISION:` and pass `--decision`.
 4. Before a major decision, scan prior decisions: `liquid-mail decisions --topic <id>`.
 
+## Event Checklist (Agents)
+
+Post an event message:
+
+- Start: `liquid-mail post --event start --agent-id <you> "START: …"`
+- Finish: `liquid-mail post --event finish --agent-id <you> "FINISH: …"`
+- Bug/issue: `liquid-mail post --event issue --agent-id <you> "ISSUE: …"`
+- User feedback: `liquid-mail post --event feedback --agent-id <you> "FEEDBACK: …"`
+
 ## Posting Guide (100 Tokens)
 
 - Post **small, structured** messages. Prefer 5-15 lines over walls of text.
@@ -55,3 +64,6 @@ Throughput tips (swarms):
 Troubleshooting:
 - `liquid-mail config` shows resolved config (redacts secrets).
 - `liquid-mail schema --json` prints the JSON schemas used for strict outputs.
+
+Identity:
+- Prefer setting `LIQUID_MAIL_AGENT_ID` so tools don’t rely on “remembering” IDs.

@@ -89,6 +89,15 @@ export LIQUID_MAIL_AGENT_ID="your-peer-id"
 export LIQUID_MAIL_NOTIFY_ON_START=1
 ```
 
+## Agent Workflow (Recommended)
+
+Use `post` to log lifecycle events:
+
+- Start: `liquid-mail post --event start --agent-id <you> "START: …"`
+- Finish: `liquid-mail post --event finish --agent-id <you> "FINISH: …"`
+- Bug/issue: `liquid-mail post --event issue --agent-id <you> "ISSUE: …"`
+- User feedback: `liquid-mail post --event feedback --agent-id <you> "FEEDBACK: …"`
+
 ## Development
 
 ```bash
