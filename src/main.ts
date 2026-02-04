@@ -18,6 +18,7 @@ import { chooseTopicFromMatches, type WorkspaceSearchMatch } from './topics/auto
 import { resolveTopicForMessage } from './topics/resolveTopic';
 import { LIQUID_MAIL_VERSION } from './version';
 import { getPinnedTopicId, setPinnedTopicId } from './state/state';
+import { statePathForCwd } from './state/state';
 
 function printHelp(): void {
   const text = [
@@ -31,6 +32,7 @@ function printHelp(): void {
     '  topics      List Honcho sessions (TBD)',
     '  notify      Context-based notifications (TBD)',
     '  hooks       Print optional shell hook snippets',
+    '  window      Show window/topic state',
     '  integrate   Install project-level instructions (claude/codex/opencode)',
     '  schema      Print JSON schemas used by Liquid Mail',
     '  topic-demo  Demo topic dominance algorithm (offline)',
@@ -314,6 +316,38 @@ async function run(): Promise<void> {
 
     if (mode === 'json') printJson({ ok: true, data: { shell, snippet } });
     else process.stdout.write(`${snippet}\n`);
+    return;
+  }
+
+  if (command === 'window') {
+    const sub = positionals[0] ?? '';
+    if (sub !== 'status') {
+      throw new LmError({
+        code: 'INVALID_INPUT',
+        message: 'Expected: liquid-mail window status',
+        exitCode: 2,
+        retryable: false,
+        suggestions: ['Run: liquid-mail window status'],
+      });
+    }
+
+    const windowId = process.env.LIQUID_MAIL_WINDOW_ID;
+    if (!windowId) {
+      throw new LmError({
+        code: 'INVALID_INPUT',
+        message: 'Missing LIQUID_MAIL_WINDOW_ID.',
+        exitCode: 2,
+        retryable: false,
+        suggestions: ['Set LIQUID_MAIL_WINDOW_ID (per terminal)', 'Or run: liquid-mail hooks install'],
+      });
+    }
+
+    const statePath = statePathForCwd(process.cwd());
+    const pinnedTopicId = await getPinnedTopicId(process.cwd(), windowId);
+    const payload = { window_id: windowId, pinned_topic_id: pinnedTopicId ?? null, state_path: statePath };
+
+    if (mode === 'json') printJson({ ok: true, data: payload });
+    else process.stdout.write(JSON.stringify(payload, null, 2) + '\n');
     return;
   }
 
