@@ -1,10 +1,88 @@
+import { execSync } from 'node:child_process';
+
 export const LIQUID_MAIL_AGENTS_BLOCK_START = '<!-- BEGIN LIQUID MAIL -->';
 export const LIQUID_MAIL_AGENTS_BLOCK_END = '<!-- END LIQUID MAIL -->';
 
 export const OPENCODE_INSTRUCTIONS_RELATIVE_PATH = './.opencode/liquid-mail.md';
 
-// Keep this short, deterministic, and easy for agents to follow.
-export const LIQUID_MAIL_AGENT_SNIPPET = `
+/**
+ * Check if beads (br or bd) is available in PATH.
+ */
+export function hasBeadsInstalled(): boolean {
+  try {
+    execSync('which br', { stdio: 'ignore' });
+    return true;
+  } catch {
+    try {
+      execSync('which bd', { stdio: 'ignore' });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}
+
+/**
+ * Get the appropriate snippet based on whether beads is installed.
+ */
+export function getAgentSnippet(): string {
+  return hasBeadsInstalled() ? LIQUID_MAIL_AGENT_SNIPPET_WITH_BEADS : LIQUID_MAIL_AGENT_SNIPPET_STANDALONE;
+}
+
+// Standalone snippet (no Beads dependency)
+export const LIQUID_MAIL_AGENT_SNIPPET_STANDALONE = `
+## Liquid Mail
+
+Liquid Mail provides a shared log—progress, decisions, and context that survives sessions.
+
+### Workflow
+
+**1. Check context**
+\`\`\`bash
+liquid-mail notify          # See what changed since last session
+\`\`\`
+
+**2. Log progress as you work**
+\`\`\`bash
+liquid-mail post "Analyzing the auth module structure"
+liquid-mail post "FINDING: Token refresh happens in middleware, not service layer"
+\`\`\`
+
+**3. Decisions before risky changes**
+\`\`\`bash
+liquid-mail post --decision "DECISION: Moving token refresh to AuthService because middleware can't access user context"
+# Then implement
+\`\`\`
+
+### Posting Format
+
+- **Short** (5-15 lines, not walls of text)
+- **Prefixed** with ALL-CAPS tags: \`FINDING:\`, \`DECISION:\`, \`QUESTION:\`, \`NEXT:\`
+- **Include file paths** so others can jump in: \`src/services/auth.ts:42\`
+
+### Topics
+
+Liquid Mail organizes messages into **topics** (Honcho sessions). Topics are **soft boundaries**—search spans all topics by default.
+
+- **Workspace-wide search**: \`liquid-mail query\` and \`notify\` search across all topics unless you filter with \`--topic\`
+- **Auto-topic**: If you omit \`--topic\` when posting, Liquid Mail finds a matching session based on content
+- **Explicit topic**: Use \`--topic <id>\` when you know which conversation stream you're in
+- **Window pinning**: Once a topic is assigned to your window, subsequent posts go there automatically
+
+### Quick Reference
+
+| Need | Command |
+|------|---------|
+| What changed? | \`liquid-mail notify\` |
+| Log progress | \`liquid-mail post "..."\` |
+| Before risky change | \`liquid-mail post --decision "DECISION: ..."\` |
+| Find history | \`liquid-mail query "search term"\` |
+| Prior decisions | \`liquid-mail decisions\` |
+| List topics | \`liquid-mail topics\` |
+`;
+
+// Beads-integrated snippet
+export const LIQUID_MAIL_AGENT_SNIPPET_WITH_BEADS = `
 ## Integrating Liquid Mail with Beads
 
 **Beads** manages task status, priority, and dependencies (\`br\` CLI).

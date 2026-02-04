@@ -7,7 +7,7 @@ import { buildManagedBlock, upsertManagedBlock } from './textBlocks';
 import {
   LIQUID_MAIL_AGENTS_BLOCK_END,
   LIQUID_MAIL_AGENTS_BLOCK_START,
-  LIQUID_MAIL_AGENT_SNIPPET,
+  getAgentSnippet,
   OPENCODE_INSTRUCTIONS_RELATIVE_PATH,
 } from './snippets';
 
@@ -57,7 +57,8 @@ async function integrateClaudeProject(cwd: string): Promise<IntegrateResult> {
 }
 
 async function integrateManagedMarkdownFile(target: IntegrateTarget, filePath: string): Promise<IntegrateResult> {
-  const block = buildManagedBlock(LIQUID_MAIL_AGENTS_BLOCK_START, LIQUID_MAIL_AGENT_SNIPPET, LIQUID_MAIL_AGENTS_BLOCK_END);
+  const snippet = getAgentSnippet();
+  const block = buildManagedBlock(LIQUID_MAIL_AGENTS_BLOCK_START, snippet, LIQUID_MAIL_AGENTS_BLOCK_END);
   const existing = await readTextIfExists(filePath);
   const next = upsertManagedBlock(existing, block, LIQUID_MAIL_AGENTS_BLOCK_START, LIQUID_MAIL_AGENTS_BLOCK_END);
 
@@ -75,7 +76,7 @@ async function integrateOpenCode(cwd: string): Promise<IntegrateResult> {
   const instructionsFilePath = join(cwd, '.opencode', 'liquid-mail.md');
   await mkdir(dirname(instructionsFilePath), { recursive: true });
   const instructionsExisting = await readTextIfExists(instructionsFilePath);
-  const instructionsNext = LIQUID_MAIL_AGENT_SNIPPET.trim() + '\n';
+  const instructionsNext = getAgentSnippet().trim() + '\n';
   files.push({
     path: instructionsFilePath,
     action: await writeTextIfChanged(instructionsFilePath, instructionsExisting, instructionsNext),
