@@ -4,6 +4,18 @@ Honcho-backed mail/log for agent swarms (messages + metadata).
 
 - Plan: `docs/liquid-mail-complete-plan.md`
 
+## Overview
+
+Liquid Mail is a CLI for recording and retrieving “agent swarm mail” (progress, decisions, issues, user feedback) in a shared Honcho workspace.
+
+High-level architecture:
+
+- Storage: messages live in Honcho sessions (“topics”) with metadata (event/decision/etc).
+- CLI: `liquid-mail post` writes; `liquid-mail query/summarize/decisions/notify` reads.
+- Window identity: each terminal window sets `LIQUID_MAIL_WINDOW_ID` so concurrent swarms are distinguishable.
+- Topic pinning: after the first post, Liquid Mail pins a topic per window id in `./.liquid-mail/state.json` (gitignored).
+- Project integration: `liquid-mail integrate --to codex|claude|opencode` writes a managed workflow block into your project’s agent instructions.
+
 ## Install
 
 One-touch install (recommended):
