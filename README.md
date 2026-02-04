@@ -52,6 +52,23 @@ To force a config path:
 export LIQUID_MAIL_CONFIG="$PWD/.liquid-mail.toml"
 ```
 
+## Agent Instructions
+
+Liquid Mail integrates with Beads (`br`) for task tracking. Add the snippet from `docs/AGENTS-snippet.md` to your project's agent instructions.
+
+**Quick workflow:**
+```bash
+br ready                           # Pick work (Beads)
+liquid-mail notify                 # Check context
+liquid-mail post "[br-123] ..."    # Log progress
+liquid-mail post --decision "..."  # Before risky changes
+br close br-123                    # Complete (Beads is authority)
+```
+
+**Roles:** Beads owns task state; Liquid Mail owns conversation/decisions.
+
+See `docs/AGENTS-snippet.md` for full conventions, topic management, and pitfalls.
+
 ## Window Env
 
 Liquid Mail works best when each terminal window has a semi-persistent identity (`LIQUID_MAIL_WINDOW_ID`) so concurrent swarms are distinguishable, and Liquid Mail can pin a topic per window.
@@ -80,36 +97,6 @@ Optional notify-on-start:
 export LIQUID_MAIL_NOTIFY_ON_START=1
 ```
 
-## Agent Instructions
-
-Add this snippet to your project’s agent instructions file (usually `AGENTS.md`, sometimes `CLAUDE.md`):
-
-```bash
-## Liquid Mail
-
-Use Liquid Mail to log swarm lifecycle events, user feedback, issues, and decisions.
-
-1. Start by checking for relevant updates: `liquid-mail notify`.
-2. Post progress: `liquid-mail post "…"`.
-3. Post lifecycle events:
-   - Start: `liquid-mail post --event start "START: …"`
-   - Finish: `liquid-mail post --event finish "FINISH: …"`
-   - Bug/issue: `liquid-mail post --event issue "ISSUE: …"`
-   - User feedback: `liquid-mail post --event feedback "FEEDBACK: …"`
-4. For decisions, be explicit and pass `--decision`:
-   - `liquid-mail post --decision "DECISION: …"`
-```
-
 ## Topic Pinning
 
 Liquid Mail pins a topic per `LIQUID_MAIL_WINDOW_ID` after the first `post` and stores it in `./.liquid-mail/state.json` (gitignored).
-
-## Workflow
-
-Use `post` to log lifecycle events:
-
-- Start: `liquid-mail post --event start "START: …"`
-- Finish: `liquid-mail post --event finish "FINISH: …"`
-- Bug/issue: `liquid-mail post --event issue "ISSUE: …"`
-- User feedback: `liquid-mail post --event feedback "FEEDBACK: …"`
-- Decision: `liquid-mail post --decision "DECISION: …"`
