@@ -10,11 +10,11 @@ export function windowNameFromId(windowId: string): string {
   const adjectiveIndex = Number(hi % BigInt(WINDOW_ADJECTIVES.length));
   const nounIndex = Number((hi / BigInt(WINDOW_ADJECTIVES.length)) % BigInt(WINDOW_NOUNS.length));
 
-  const adjective = slugToken(WINDOW_ADJECTIVES[adjectiveIndex] ?? 'window');
-  const noun = slugToken(WINDOW_NOUNS[nounIndex] ?? 'id');
+  const adjective = idToken(WINDOW_ADJECTIVES[adjectiveIndex] ?? 'window');
+  const noun = idToken(WINDOW_NOUNS[nounIndex] ?? 'id');
 
   const suffix = base32Suffix(digest, 8, 4);
-  return `${adjective}-${noun}-${suffix}`;
+  return `${adjective}${noun}${suffix}`;
 }
 
 function sha256(input: string): Uint8Array {
@@ -46,16 +46,12 @@ function base32Suffix(bytes: Uint8Array, offset: number, length: number): string
   return out;
 }
 
-function slugToken(token: string): string {
+function idToken(token: string): string {
   const ascii = token
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase();
 
-  const slug = ascii
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+/, '')
-    .replace(/-+$/, '');
-
-  return slug || 'x';
+  const id = ascii.replace(/[^a-z0-9]/g, '');
+  return id || 'x';
 }

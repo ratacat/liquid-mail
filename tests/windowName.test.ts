@@ -9,11 +9,11 @@ describe('windowNameFromId', () => {
 
   it('formats as adjective-noun-suffix', () => {
     const name = windowNameFromId('lm-test-456');
-    expect(name).toMatch(/^[a-z0-9]+(?:-[a-z0-9]+)*-[a-z0-9]+(?:-[a-z0-9]+)*-[a-z2-7]{4}$/);
+    expect(name).toMatch(/^[a-z0-9]+[a-z2-7]{4}$/);
+    expect(name).not.toContain('-');
   });
 
   it('usually differs across ids', () => {
     expect(windowNameFromId('lm-a')).not.toBe(windowNameFromId('lm-b'));
   });
 });
-
