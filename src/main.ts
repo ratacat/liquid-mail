@@ -21,7 +21,6 @@ import { getPinnedTopicId, setPinnedTopicId } from './state/state';
 import { statePathForCwd } from './state/state';
 import { windowNameFromId } from './window/nameFromId';
 import { watchTopic } from './watch/watch';
-import { repoTopicIdForCwd } from './topics/repoTopic';
 
 function printHelpGlobal(): void {
   const text = [
@@ -68,7 +67,7 @@ function printHelpForCommand(command: string): void {
       '  liquid-mail watch [--topic <id>] [--interval <seconds>] [--tail <n>] [--notify] [--once]',
       '',
       'Flags:',
-      '  --topic       Session/topic id to watch (defaults to pinned topic; else repo-name topic)',
+      '  --topic       Session/topic id to watch (defaults to pinned topic for this window)',
       '  --interval    Poll interval seconds (default: 15)',
       '  --tail        Print last N messages once at start (default: 0)',
       '  --notify      Show OS notifications (macOS only)',
@@ -373,7 +372,15 @@ async function run(): Promise<void> {
       const pinned = await getPinnedTopicId(process.cwd(), envWindowId);
       if (pinned) topicId = pinned;
     }
-    if (!topicId) topicId = repoTopicIdForCwd(process.cwd());
+    if (!topicId) {
+      throw new LmError({
+        code: 'TOPIC_REQUIRED',
+        message: 'Missing --topic and no pinned topic for this window yet.',
+        exitCode: 2,
+        retryable: false,
+        suggestions: ['Pass --topic <SESSION_ID>', 'Or run liquid-mail post once to pin a topic'],
+      });
+    }
 
     const { config } = await loadConfigResolved();
     const auth = requireHonchoAuth(config);
@@ -520,20 +527,31 @@ async function run(): Promise<void> {
     }
 
     if (!resolvedTopicId) {
-      // Prefer an existing topic match, but do not auto-create random topics.
-      // If no match, fall back to a repo-scoped default topic id.
       topicDecision = await resolveTopicForMessage({
         client,
         message,
-        config: { ...config.topics, autoCreate: false },
+        config: config.topics,
         titleHint: message.slice(0, 80),
         systemPeerId: config.decisions.systemPeerId,
       });
 
       if (topicDecision.action === 'assigned') {
         resolvedTopicId = topicDecision.chosenTopicId;
+      } else if (topicDecision.action === 'created' || topicDecision.action === 'merged') {
+        resolvedTopicId = topicDecision.createdTopicId;
       } else {
-        resolvedTopicId = repoTopicIdForCwd(process.cwd());
+        const errorCode = topicDecision.action === 'blocked' ? 'TOPIC_LIMIT_REACHED' : 'TOPIC_REQUIRED';
+        throw new LmError({
+          code: errorCode,
+          message:
+            topicDecision.action === 'blocked'
+              ? 'Topic cap reached; cannot auto-create new topic.'
+              : 'No --topic provided and auto-topic was inconclusive.',
+          exitCode: 2,
+          retryable: false,
+          suggestions: ['Re-run with --topic <SESSION_ID>', 'Adjust topics.auto_create or topics.max_active'],
+          details: { topicDecision },
+        });
       }
     }
 

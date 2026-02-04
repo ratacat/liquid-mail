@@ -299,7 +299,10 @@ main() {
 #
 [honcho]
 api_key = "hc_your_api_key"
-workspace_id = "ws_your_workspace_id"
+# workspace_id is optional.
+# If omitted, Liquid Mail defaults it to the repo name (git root folder name).
+# Honcho uses get-or-create semantics for workspaces, so it will be created on first use.
+# workspace_id = "my-repo"
 base_url = "https://api.honcho.dev"
 EOF
       say "Wrote config template: ${config_path}"

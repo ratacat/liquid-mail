@@ -6,6 +6,7 @@ import { dirname, join, parse } from 'node:path';
 import { LmError } from '../cli/errors';
 
 import { parse as parseToml } from 'smol-toml';
+import { defaultWorkspaceIdForCwd } from '../honcho/repoWorkspace';
 
 export type LiquidMailConfig = {
   honcho: {
@@ -219,27 +220,28 @@ export async function loadConfig(opts?: LoadConfigOpts): Promise<{ config: Liqui
   const parsed = await readTomlIfExists(path);
   const merged = mergeConfig(base, parsed);
   const withEnv = applyEnvOverrides(merged);
-  return { config: withEnv, configPath: path };
+  const withDefaults = applyRepoWorkspaceDefault(withEnv, process.cwd());
+  return { config: withDefaults, configPath: path };
 }
 
 export function requireHonchoAuth(config: LiquidMailConfig): { apiKey: string; workspaceId: string; baseUrl: string } {
   const { apiKey, workspaceId, baseUrl } = config.honcho;
-  if (!apiKey || !workspaceId || looksLikePlaceholder(apiKey) || looksLikePlaceholder(workspaceId)) {
+  if (!apiKey || looksLikePlaceholder(apiKey)) {
     throw new LmError({
       code: 'MISSING_CONFIG',
-      message: 'Missing Honcho configuration (apiKey/workspaceId).',
+      message: 'Missing Honcho configuration (apiKey).',
       exitCode: 2,
       retryable: false,
       suggestions: [
-        'Set LIQUID_MAIL_HONCHO_API_KEY and LIQUID_MAIL_HONCHO_WORKSPACE_ID',
-        'Or set HONCHO_API_KEY and HONCHO_WORKSPACE_ID',
-        'Or create ./.liquid-mail.toml (project) or ~/.liquid-mail.toml (user) with [honcho] api_key=..., workspace_id=...',
+        'Set LIQUID_MAIL_HONCHO_API_KEY',
+        'Or set HONCHO_API_KEY',
+        'Or create ./.liquid-mail.toml (project) or ~/.liquid-mail.toml (user) with [honcho] api_key=...',
         'Or set LIQUID_MAIL_CONFIG to point to a project config file',
       ],
       details: { baseUrl },
     });
   }
-  return { apiKey, workspaceId, baseUrl };
+  return { apiKey, workspaceId: workspaceId ?? defaultWorkspaceIdForCwd(process.cwd()), baseUrl };
 }
 
 function looksLikePlaceholder(value: string): boolean {
@@ -249,4 +251,13 @@ function looksLikePlaceholder(value: string): boolean {
   if (v === 'hc_your_api_key' || v === 'ws_your_workspace_id') return true;
   if (v === 'hc_...' || v === 'ws_...') return true;
   return false;
+}
+
+function applyRepoWorkspaceDefault(config: LiquidMailConfig, cwd: string): LiquidMailConfig {
+  const next: LiquidMailConfig = structuredClone(config);
+  const workspaceId = next.honcho.workspaceId;
+  if (!workspaceId || looksLikePlaceholder(workspaceId)) {
+    next.honcho.workspaceId = defaultWorkspaceIdForCwd(cwd);
+  }
+  return next;
 }

@@ -33,22 +33,27 @@ Secrets via env vars:
 
 ```bash
 export LIQUID_MAIL_HONCHO_API_KEY="hc_your_api_key"
-export LIQUID_MAIL_HONCHO_WORKSPACE_ID="ws_your_workspace_id"
+export LIQUID_MAIL_HONCHO_WORKSPACE_ID="my-workspace"  # optional override
 ```
 
 Honcho-standard env var names are also supported:
 
 ```bash
 export HONCHO_API_KEY="hc_your_api_key"
-export HONCHO_WORKSPACE_ID="ws_your_workspace_id"
+export HONCHO_WORKSPACE_ID="my-workspace"  # optional override
 export HONCHO_URL="https://api.honcho.dev"
 ```
+
+Workspace default:
+
+- If you don’t set a workspace id, Liquid Mail uses the repo name (git root folder name) as the Honcho workspace id.
+- Honcho uses get-or-create semantics for workspaces, so it will be created automatically on first use.
 
 Config file (recommended):
 
 ```toml
 [honcho]
-workspace_id = "ws_your_workspace_id"
+workspace_id = "my-workspace" # optional override
 base_url = "https://api.honcho.dev"
 ```
 
@@ -99,10 +104,6 @@ fi
 ## Topic Pinning
 
 Liquid Mail pins a topic per `LIQUID_MAIL_WINDOW_ID` after the first `post` and stores it in `./.liquid-mail/state.json` (gitignored).
-
-## Default Topic
-
-If you omit `--topic` and your window has no pinned topic yet, Liquid Mail posts to a default topic derived from the repo name (git root folder name). The topic is created automatically on first post.
 
 ## Live Updates (Optional “Push”)
 
