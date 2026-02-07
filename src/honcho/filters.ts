@@ -9,7 +9,7 @@ export function metadataIn(values: HonchoMetadataValue[]): HonchoMetadataFilter 
 }
 
 export function filtersForSession(sessionId: string): HonchoSearchFilters {
-  return { session_ids: [sessionId] };
+  return { session_id: sessionId };
 }
 
 export function buildSearchFilters(params: {
@@ -20,7 +20,13 @@ export function buildSearchFilters(params: {
   until?: string;
 }): HonchoSearchFilters {
   const filters: HonchoSearchFilters = {};
-  if (params.sessionIds) filters.session_ids = params.sessionIds;
+  if (params.sessionIds) {
+    if (params.sessionIds.length === 1) {
+      const first = params.sessionIds[0];
+      if (first !== undefined) filters.session_id = first;
+    }
+    else if (params.sessionIds.length > 1) filters.session_id = params.sessionIds;
+  }
   if (params.peerIds) filters.peer_ids = params.peerIds;
   if (params.metadata) filters.metadata = params.metadata;
   if (params.since) filters.since = params.since;

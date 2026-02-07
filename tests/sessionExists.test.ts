@@ -9,8 +9,7 @@ describe('sessionExists', () => {
       honcho: {
         http: {
           post: async (_path: string, opts: any) => {
-            const ids = opts?.body?.filters?.session_ids ?? [];
-            const want = ids[0];
+            const want = opts?.body?.filters?.id;
             return { items: want ? [{ id: want }] : [] };
           },
         },
@@ -29,4 +28,3 @@ describe('sessionExists', () => {
     expect(await sessionExists(client, 'missing-topic')).toBe(false);
   });
 });
-

@@ -11,7 +11,7 @@ export type HonchoMetadataFilter =
     };
 
 export type HonchoSearchFilters = {
-  session_ids?: HonchoId[];
+  session_id?: HonchoId | HonchoId[];
   peer_ids?: HonchoId[];
   metadata?: Record<string, HonchoMetadataFilter>;
   since?: string;
