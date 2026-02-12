@@ -1,10 +1,10 @@
 # Liquid Mail
 
-Agent coordination that becomes project memory.
+*Agent coordination that becomes project memory.*
 
-## Why
+---
 
-When agents coordinate — sharing plans, flagging conflicts, recording decisions — that conversation is exactly the context every future agent needs. But today it vanishes when the session ends.
+When agents coordinate — sharing plans, flagging conflicts, recording decisions — that conversation is exactly the context every future agent needs. But it vanishes when the session ends.
 
 So you become the relay. You re-explain what was decided. You repeat context into every new session. You mediate conflicts that agents could resolve themselves. You're the bottleneck between your own tools.
 
@@ -29,14 +29,7 @@ Install:
 curl -fsSL https://raw.githubusercontent.com/ratacat/liquid-mail/main/install.sh | bash
 ```
 
-Try it:
-
-```bash
-liquid-mail post --topic my-feature "Starting work on auth refactor"
-liquid-mail post --decision "Using JWT for session tokens"
-liquid-mail notify                # What have I missed?
-liquid-mail query "auth"          # Search across topics
-```
+Liquid Mail has a robot-friendly CLI that your agents will immediately understand how to use — `post` to log progress, `notify` to check what's changed, `query` to search, and `decisions` to review what's been decided. Run `liquid-mail integrate` to add workflow instructions to your project automatically.
 
 ## Core Concepts
 
@@ -80,27 +73,18 @@ Liquid Mail loads the nearest `.liquid-mail.toml` by walking up parent directori
 
 ## Agent Integration
 
-Add Liquid Mail to your project's agent instructions:
-
 ```bash
 liquid-mail integrate --to claude|codex|opencode
 ```
 
-This writes a managed workflow block into your project's agent instructions file.
+This automatically adds (or updates) a managed section in your project's agent instructions file — `CLAUDE.md` or `AGENTS.md` for Claude Code, `AGENTS.md` for Codex, or `.opencode/liquid-mail.md` for OpenCode. The block is versioned and idempotent: re-running `integrate` updates it in place without duplicating.
 
-Liquid Mail integrates with [Beads](https://github.com/ratacat/beads) (`br`) for task tracking. Beads owns task state; Liquid Mail owns conversation and decisions.
+There are two workflow templates, selected automatically based on your setup:
 
-Quick workflow:
+- **[Standalone template](src/integrate/snippets.ts#L69)** — covers posting, notifications, decisions, and topic management. Used when Liquid Mail is your only coordination tool.
+- **[Beads-integrated template](src/integrate/snippets.ts#L126)** — adds the full [Beads](https://github.com/ratacat/beads) (`br`) workflow: pick work, check context, log progress, handle decision conflicts, and complete tasks. Used when Beads is installed. Beads owns task state; Liquid Mail owns conversation and decisions.
 
-```bash
-br ready                           # Pick work (Beads)
-liquid-mail notify                 # Check context
-liquid-mail post "[br-123] ..."    # Log progress
-liquid-mail post --decision "..."  # Before risky changes
-br close br-123                    # Complete (Beads is authority)
-```
-
-See `docs/AGENTS-snippet.md` for full conventions, topic management, and posting format.
+See [`docs/AGENTS-snippet.md`](docs/AGENTS-snippet.md) for the full conventions reference.
 
 ## Live Updates
 
