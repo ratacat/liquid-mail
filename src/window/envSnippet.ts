@@ -7,12 +7,7 @@ export function windowEnvSnippet(shell: ShellName): string {
   const body = [
     begin,
     'if [ -z "${LIQUID_MAIL_WINDOW_ID:-}" ]; then',
-    '  if command -v uuidgen >/dev/null 2>&1; then',
-    '    LIQUID_MAIL_WINDOW_ID="lm$(uuidgen | tr -d - | tr \'[:upper:]\' \'[:lower:]\' | cut -c1-12)"',
-    '  else',
-    '    LIQUID_MAIL_WINDOW_ID="lm$(date -u +%y%m%d%H%M%S)${RANDOM}${RANDOM}"',
-    '  fi',
-    '  export LIQUID_MAIL_WINDOW_ID',
+    '  export LIQUID_MAIL_WINDOW_ID="lm$(printf \'%04x%04x%04x\' $RANDOM $RANDOM $RANDOM)"',
     'fi',
     end,
   ];

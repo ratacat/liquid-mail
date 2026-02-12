@@ -14,7 +14,7 @@ export function windowNameFromId(windowId: string): string {
   const noun = idToken(WINDOW_NOUNS[nounIndex] ?? 'id');
 
   const suffix = base32Suffix(digest, 8, 4);
-  return `${adjective}${noun}${suffix}`;
+  return `${adjective}-${noun}-${suffix}`;
 }
 
 function sha256(input: string): Uint8Array {
