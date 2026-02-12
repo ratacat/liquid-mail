@@ -98,3 +98,5 @@ liquid-mail watch                      # or watch your pinned topic
 ## Powered By
 
 Built on [Honcho](https://honcho.dev) — the reasoning layer that powers decision extraction, conflict detection, and intelligent summaries.
+
+Liquid Mail is a direct intellectual descendant of [MCP Agent Mail](https://github.com/Dicklesworthstone/mcp_agent_mail) by [Jeffrey Emanuel](https://x.com/doodlestein), built using his [Agentic Coding Flywheel](https://agent-flywheel.com) process.
