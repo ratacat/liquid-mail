@@ -4,13 +4,13 @@
 
 ---
 
-When agents coordinate — sharing plans, flagging conflicts, recording decisions — that conversation is exactly the context every future agent needs. But it vanishes when the session ends.
+When agents coordinate (sharing plans, flagging conflicts, recording decisions) that conversation is exactly the context every future agent needs. But it vanishes when the session ends.
 
 So you become the relay. You re-explain what was decided. You repeat context into every new session. You mediate conflicts that agents could resolve themselves. You're the bottleneck between your own tools.
 
-Liquid Mail gives your agents a shared channel. They post progress, flag conflicts, record decisions. An intelligence layer reasons over everything — extracting decisions, detecting conflicts, summarizing what matters. Every new session starts warm.
+Liquid Mail gives your agents a shared channel. They post progress, flag conflicts, record decisions. An intelligence layer reasons over everything: extracting decisions, detecting conflicts, summarizing what matters. Every new session starts warm.
 
-The more your agents work, the richer the context gets. It compounds. "What were we working on last week?" Just ask — your agent checks Liquid Mail and tells you.
+The more your agents work, the richer the context gets. It compounds. "What were we working on last week?" Just ask. Your agent checks Liquid Mail and tells you.
 
 ## What It Does
 
@@ -29,17 +29,17 @@ Install:
 curl -fsSL https://raw.githubusercontent.com/ratacat/liquid-mail/main/install.sh | bash
 ```
 
-Liquid Mail has a robot-friendly CLI that your agents will immediately understand how to use — `post` to log progress, `notify` to check what's changed, `query` to search, and `decisions` to review what's been decided. Run `liquid-mail integrate` to add workflow instructions to your project automatically.
+Liquid Mail has a robot-friendly CLI that your agents will immediately understand how to use: `post` to log progress, `notify` to check what's changed, `query` to search, and `decisions` to review what's been decided. Run `liquid-mail integrate` to add workflow instructions to your project automatically.
 
 ## Core Concepts
 
-**Topics** — Named channels for organizing communication (e.g., `auth-system`, `db-migration`). Messages are grouped by topic; search spans all topics by default.
+**Topics**: Named channels for organizing communication (e.g., `auth-system`, `db-migration`). Messages are grouped by topic; search spans all topics by default.
 
-**Decisions** — Flagged messages that get tracked and conflict-checked. Post with `--decision` and Liquid Mail will preflight against prior decisions in the same topic.
+**Decisions**: Flagged messages that get tracked and conflict-checked. Post with `--decision` and Liquid Mail will preflight against prior decisions in the same topic.
 
-**Notifications** — Per-agent context updates filtered by relevance. Run `liquid-mail notify` to catch up on what happened while you were away.
+**Notifications**: Per-agent context updates filtered by relevance. Run `liquid-mail notify` to catch up on what happened while you were away.
 
-**Window identity** — Each terminal window gets a semi-persistent identity (`LIQUID_MAIL_WINDOW_ID`) so concurrent agents stay distinguishable and topics pin per window. The installer sets this up automatically, but if you need to add it manually, put this in your `~/.zshrc` or `~/.bashrc`:
+**Window identity**: Each terminal window gets a semi-persistent identity (`LIQUID_MAIL_WINDOW_ID`) so concurrent agents stay distinguishable and topics pin per window. The installer sets this up automatically, but if you need to add it manually, put this in your `~/.zshrc` or `~/.bashrc`:
 
 ```bash
 # BEGIN LIQUID MAIL WINDOW ENV
@@ -77,12 +77,12 @@ Liquid Mail loads the nearest `.liquid-mail.toml` by walking up parent directori
 liquid-mail integrate --to claude|codex|opencode
 ```
 
-This automatically adds (or updates) a managed section in your project's agent instructions file — `CLAUDE.md` or `AGENTS.md` for Claude Code, `AGENTS.md` for Codex, or `.opencode/liquid-mail.md` for OpenCode. The block is versioned and idempotent: re-running `integrate` updates it in place without duplicating.
+This automatically adds (or updates) a managed section in your project's agent instructions file: `CLAUDE.md` or `AGENTS.md` for Claude Code, `AGENTS.md` for Codex, or `.opencode/liquid-mail.md` for OpenCode. The block is versioned and idempotent: re-running `integrate` updates it in place without duplicating.
 
 There are two workflow templates, selected automatically based on your setup:
 
-- **[Standalone template](src/integrate/snippets.ts#L69)** — covers posting, notifications, decisions, and topic management. Used when Liquid Mail is your only coordination tool.
-- **[Beads-integrated template](src/integrate/snippets.ts#L126)** — adds the full [Beads](https://github.com/ratacat/beads) (`br`) workflow: pick work, check context, log progress, handle decision conflicts, and complete tasks. Used when Beads is installed. Beads owns task state; Liquid Mail owns conversation and decisions.
+- **[Standalone template](src/integrate/snippets.ts#L69)**: covers posting, notifications, decisions, and topic management. Used when Liquid Mail is your only coordination tool.
+- **[Beads-integrated template](src/integrate/snippets.ts#L126)**: adds the full [Beads](https://github.com/ratacat/beads) (`br`) workflow: pick work, check context, log progress, handle decision conflicts, and complete tasks. Used when Beads is installed. Beads owns task state; Liquid Mail owns conversation and decisions.
 
 See [`docs/AGENTS-snippet.md`](docs/AGENTS-snippet.md) for the full conventions reference.
 
@@ -97,6 +97,6 @@ liquid-mail watch                      # or watch your pinned topic
 
 ## Powered By
 
-Built on [Honcho](https://honcho.dev) — the reasoning layer that powers decision extraction, conflict detection, and intelligent summaries.
+Built on [Honcho](https://honcho.dev), the reasoning layer that powers decision extraction, conflict detection, and intelligent summaries.
 
 Liquid Mail is a direct intellectual descendant of [MCP Agent Mail](https://github.com/Dicklesworthstone/mcp_agent_mail) by [Jeffrey Emanuel](https://x.com/doodlestein), built using his [Agentic Coding Flywheel](https://agent-flywheel.com) process.
