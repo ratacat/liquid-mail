@@ -74,73 +74,46 @@ Shared log for progress, decisions, and context that survives sessions.
 ### Workflow
 
 1. **Check context**: \`liquid-mail notify\`
-2. **Log progress** (topic required on first post, pinned after):
+2. **Work**: Log progress as you go. Topic required on first post, pinned after.
    \`\`\`bash
    liquid-mail post --topic auth-system "Analyzing the auth module structure"
    liquid-mail post "FINDING: Token refresh happens in middleware"
-   \`\`\`
-3. **Decisions before risky changes**:
-   \`\`\`bash
    liquid-mail post --decision "DECISION: Moving token refresh to AuthService"
    \`\`\`
+3. **Sync**: Commit and push your changes.
 
-### Posting Format
+### Posting
 
-- Short (5-15 lines). Prefix with ALL-CAPS tags: \`FINDING:\`, \`DECISION:\`, \`QUESTION:\`, \`NEXT:\`
+- Short (5-15 lines). Prefix: \`FINDING:\`, \`DECISION:\`, \`QUESTION:\`, \`NEXT:\`
 - Include file paths: \`src/services/auth.ts:42\`
-- User-facing replies: include \`AGENT: <window-name>\` (get it with \`liquid-mail window name\`)
-
-### Topics
-
-\`--topic\` is required for your first post; after that it's pinned to your window. Names: 4-50 chars, lowercase + hyphens (e.g., \`auth-system\`, \`db-migrations\`).
-
-- \`liquid-mail topics\` — list topics
-- \`liquid-mail query "auth"\` — search across topics
-- \`liquid-mail decisions --topic <name>\` — prior decisions
+- Post \`DECISION:\` messages before risky changes, not after
+- User-facing replies: include \`AGENT: <window-name>\` (\`liquid-mail window name\`)
+- Topics: 4-50 chars, lowercase + hyphens. \`liquid-mail topics\` to list, \`liquid-mail query\` to search.
 `;
 
 // Beads-integrated snippet
 export const LIQUID_MAIL_AGENT_SNIPPET_WITH_BEADS = `
 ## Liquid Mail + Beads
 
-**Beads** owns task state (\`br\` CLI). **Liquid Mail** owns the shared log: progress, decisions, and context that survives sessions.
+**Beads** owns task state (\`br\`). **Liquid Mail** owns the shared log: progress, decisions, and context that survives sessions.
 
-### Conventions
+### Workflow
 
-- Include the Beads issue ID in posts: \`[lm-jht] Topic validation rules\`
+1. **Start**: \`br ready\` to find work, then \`br update <id> --status in_progress\`
+2. **Check context**: \`liquid-mail notify\` and \`liquid-mail query "<id>"\`
+3. **Work**: Log progress as you go. Topic required on first post, pinned after.
+   \`\`\`bash
+   liquid-mail post --topic auth-system "[lm-jht] FINDING: Token refresh in middleware"
+   liquid-mail post --decision "[lm-jht] DECISION: Move refresh to AuthService"
+   \`\`\`
+4. **Complete**: Run quality gates (tests, lints, build) first. Then \`br close <id>\` and post a summary.
+5. **Sync**: \`br sync --flush-only\`, then \`git add .beads/ && git commit && git push\`
+
+### Posting
+
+- Short (5-15 lines). Prefix: \`FINDING:\`, \`DECISION:\`, \`QUESTION:\`, \`NEXT:\`
+- Include file paths (\`src/auth.ts:42\`) and issue IDs (\`[lm-jht]\`)
 - Post \`DECISION:\` messages before risky changes, not after
-- User-facing replies: include \`AGENT: <window-name>\` (get it with \`liquid-mail window name\`)
-
-### Typical Flow
-
-1. **Pick work** (Beads): \`br ready\`, then \`br update lm-jht --status in_progress\`
-2. **Check context** (Liquid Mail):
-   \`\`\`bash
-   liquid-mail notify
-   liquid-mail query "lm-jht"
-   \`\`\`
-3. **Log progress** (topic required on first post, pinned after):
-   \`\`\`bash
-   liquid-mail post --topic auth-system "[lm-jht] FINDING: IDs like lm3189... used as topic names"
-   liquid-mail post "[lm-jht] NEXT: Add validation + rename guidance"
-   \`\`\`
-4. **Decisions before risky changes**:
-   \`\`\`bash
-   liquid-mail post --decision "[lm-jht] DECISION: Reject UUID-like topic names; require slugs"
-   \`\`\`
-5. **Complete**: \`br close lm-jht\`
-
-### Posting Format
-
-- Short (5-15 lines). Prefix with ALL-CAPS tags: \`FINDING:\`, \`DECISION:\`, \`QUESTION:\`, \`NEXT:\`
-- Include file paths: \`src/services/auth.ts:42\`
-- Include issue IDs in brackets: \`[lm-jht]\`
-
-### Topics
-
-\`--topic\` is required for your first post; after that it's pinned to your window. Names: 4-50 chars, lowercase + hyphens (e.g., \`auth-system\`, \`db-migrations\`).
-
-- \`liquid-mail topics\` — list topics
-- \`liquid-mail query "auth"\` — search across topics
-- \`liquid-mail decisions --topic <name>\` — prior decisions
+- User-facing replies: include \`AGENT: <window-name>\` (\`liquid-mail window name\`)
+- Topics: 4-50 chars, lowercase + hyphens. \`liquid-mail topics\` to list, \`liquid-mail query\` to search.
 `;

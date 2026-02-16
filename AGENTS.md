@@ -70,3 +70,29 @@ gh release create vX.Y.Z release/liquid-mail-darwin-arm64.tar.gz --title "vX.Y.Z
 ```
 
 **Note:** Currently only darwin-arm64 binary is built. For cross-platform releases, additional builds would be needed.
+
+<!-- BEGIN LIQUID MAIL (v:e3791691) -->
+## Liquid Mail + Beads
+
+**Beads** owns task state (`br`). **Liquid Mail** owns the shared log: progress, decisions, and context that survives sessions.
+
+### Workflow
+
+1. **Start**: `br ready` to find work, then `br update <id> --status in_progress`
+2. **Check context**: `liquid-mail notify` and `liquid-mail query "<id>"`
+3. **Work**: Log progress as you go. Topic required on first post, pinned after.
+   ```bash
+   liquid-mail post --topic auth-system "[lm-jht] FINDING: Token refresh in middleware"
+   liquid-mail post --decision "[lm-jht] DECISION: Move refresh to AuthService"
+   ```
+4. **Complete**: `br close <id>`, then post a summary.
+5. **Sync**: `br sync --flush-only`, then `git add .beads/ && git commit && git push`
+
+### Posting
+
+- Short (5-15 lines). Prefix: `FINDING:`, `DECISION:`, `QUESTION:`, `NEXT:`
+- Include file paths (`src/auth.ts:42`) and issue IDs (`[lm-jht]`)
+- Post `DECISION:` messages before risky changes, not after
+- User-facing replies: include `AGENT: <window-name>` (`liquid-mail window name`)
+- Topics: 4-50 chars, lowercase + hyphens. `liquid-mail topics` to list, `liquid-mail query` to search.
+<!-- END LIQUID MAIL -->
