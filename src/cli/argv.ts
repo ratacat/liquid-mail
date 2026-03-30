@@ -7,6 +7,27 @@ export type ParsedArgv = {
   positionals: string[];
 };
 
+const LONG_FLAGS_WITH_VALUES = new Set([
+  'agent-id',
+  'agentId',
+  'bind',
+  'config',
+  'event',
+  'interval',
+  'into',
+  'limit',
+  'port',
+  'secret',
+  'since',
+  'tail',
+  'to',
+  'topic',
+]);
+
+const LONG_FLAGS_WITH_OPTIONAL_BOOLEAN_VALUES = new Set([
+  'decision',
+]);
+
 export function getArgv(): string[] {
   const bunArgv = (globalThis as any).Bun?.argv;
   if (Array.isArray(bunArgv)) return bunArgv.slice(2);
@@ -39,7 +60,13 @@ export function parseArgv(argv: string[]): ParsedArgv {
       }
 
       const next = argv[i + 1];
-      if (next !== undefined && !next.startsWith('-')) {
+      if (LONG_FLAGS_WITH_VALUES.has(name) && next !== undefined && !next.startsWith('-')) {
+        flags[name] = next;
+        i++;
+        continue;
+      }
+
+      if (LONG_FLAGS_WITH_OPTIONAL_BOOLEAN_VALUES.has(name) && (next === 'true' || next === 'false')) {
         flags[name] = next;
         i++;
         continue;
